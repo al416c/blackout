@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACKOUT</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ── Écran d'authentification ────────────────────────────── -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-container">
+            <h1 class="game-title">BLACK<span class="accent">OUT</span></h1>
+            <p class="subtitle">Infiltrez. Propagez. Dominez.</p>
+
+            <div id="auth-tabs">
+                <button class="tab active" data-tab="login">Connexion</button>
+                <button class="tab" data-tab="register">Inscription</button>
+            </div>
+
+            <form id="login-form" class="auth-form">
+                <input type="text" id="login-username" placeholder="Nom d'utilisateur" autocomplete="username" required>
+                <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" required>
+                <button type="submit" class="btn btn-primary">Se connecter</button>
+            </form>
+
+            <form id="register-form" class="auth-form hidden">
+                <input type="text" id="reg-username" placeholder="Nom d'utilisateur" autocomplete="username" required>
+                <input type="password" id="reg-password" placeholder="Mot de passe" autocomplete="new-password" required>
+                <input type="password" id="reg-password2" placeholder="Confirmer le mot de passe" autocomplete="new-password" required>
+                <button type="submit" class="btn btn-primary">S'inscrire</button>
+            </form>
+
+            <div id="auth-error" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- ── Menu principal ──────────────────────────────────────── -->
+    <div id="menu-screen" class="screen">
+        <div class="menu-container">
+            <h1 class="game-title">BLACK<span class="accent">OUT</span></h1>
+            <p id="welcome-msg" class="subtitle"></p>
+
+            <div class="malware-select">
+                <h3>Choisissez votre malware</h3>
+                <div class="malware-grid">
+                    <div class="malware-card selected" data-class="worm">
+                        <div class="malware-icon">🐛</div>
+                        <h4>Worm</h4>
+                        <span class="malware-type">Aggro</span>
+                        <p>Propagation rapide, bruit élevé</p>
+                    </div>
+                    <div class="malware-card" data-class="trojan">
+                        <div class="malware-icon">🐴</div>
+                        <h4>Trojan</h4>
+                        <span class="malware-type">Infiltration</span>
+                        <p>Contourne les pare-feux, discret</p>
+                    </div>
+                    <div class="malware-card" data-class="ransomware">
+                        <div class="malware-icon">💰</div>
+                        <h4>Ransomware</h4>
+                        <span class="malware-type">Force Brute</span>
+                        <p>Revenus massifs, détection rapide</p>
+                    </div>
+                    <div class="malware-card" data-class="rootkit">
+                        <div class="malware-icon">👻</div>
+                        <h4>Rootkit</h4>
+                        <span class="malware-type">Furtivité</span>
+                        <p>Quasi-invisible, propagation lente</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-buttons">
+                <button id="btn-start-game" class="btn btn-primary btn-large">Lancer la partie</button>
+                <button id="btn-leaderboard" class="btn btn-secondary">Classement</button>
+                <button id="btn-logout" class="btn btn-ghost">Déconnexion</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Classement ──────────────────────────────────────────── -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="leaderboard-container">
+            <h2>Classement <span class="accent">Global</span></h2>
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Joueur</th>
+                        <th>Parties</th>
+                        <th>Victoires</th>
+                        <th>Meilleur score</th>
+                        <th>Nœuds infectés</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+            <button id="btn-back-menu" class="btn btn-secondary">Retour</button>
+        </div>
+    </div>
+
+    <!-- ── Écran de jeu ────────────────────────────────────────── -->
+    <div id="game-screen" class="screen">
+        <!-- HUD supérieur -->
+        <div id="game-hud">
+            <div class="hud-left">
+                <div class="hud-item">
+                    <span class="hud-label">Tick</span>
+                    <span id="hud-tick" class="hud-value">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Malware</span>
+                    <span id="hud-malware" class="hud-value">—</span>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div class="suspicion-bar-container">
+                    <span class="hud-label">Méfiance</span>
+                    <div class="suspicion-bar">
+                        <div id="suspicion-fill" class="suspicion-fill" style="width:0%"></div>
+                    </div>
+                    <span id="suspicion-text" class="suspicion-text">0%</span>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-item">
+                    <span class="hud-label">CPU Cycles</span>
+                    <span id="hud-cpu" class="hud-value resource-cpu">50</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Score</span>
+                    <span id="hud-score" class="hud-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone de jeu (canvas réseau) -->
+        <div id="game-area">
+            <canvas id="network-canvas"></canvas>
+
+            <!-- Panneau latéral upgrades -->
+            <div id="upgrade-panel" class="side-panel">
+                <h3>Évolution <button id="toggle-upgrades" class="btn-toggle">◀</button></h3>
+                <div id="upgrade-tree"></div>
+            </div>
+        </div>
+
+        <!-- Infos nœuds -->
+        <div id="node-info">
+            <div class="info-item">
+                <span class="dot dot-infected"></span>
+                <span>Infectés: <strong id="info-infected">0</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="dot dot-healthy"></span>
+                <span>Sains: <strong id="info-healthy">0</strong></span>
+            </div>
+            <div class="info-item">
+                <span class="dot dot-quarantined"></span>
+                <span>Quarantaine: <strong id="info-quarantined">0</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Overlay fin de partie ───────────────────────────────── -->
+    <div id="game-over-overlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2 id="game-over-title"></h2>
+            <p id="game-over-msg"></p>
+            <p>Score final: <strong id="game-over-score">0</strong></p>
+            <button id="btn-back-menu-go" class="btn btn-primary">Retour au menu</button>
+        </div>
+    </div>
+
+    <!-- ── Notification toast ──────────────────────────────────── -->
+    <div id="toast-container"></div>
+
+    <script src="js/websocket.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/leaderboard.js"></script>
+    <script src="js/upgrades.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

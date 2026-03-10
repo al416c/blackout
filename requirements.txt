@@ -1,0 +1,2 @@
+websockets>=16.0
+bcrypt>=4.1.0
