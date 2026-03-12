@@ -10,6 +10,14 @@ const Game = (() => {
     let hoveredNode = null;
     let hoveredBubble = null;
 
+    // Caméra (zoom & déplacement)
+    let zoom = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isPanning = false;
+    let lastPanX = 0;
+    let lastPanY = 0;
+
     // Couleurs
     const COLORS = {
         infected:    '#ff2244',
@@ -41,6 +49,12 @@ const Game = (() => {
         window.addEventListener('resize', resizeCanvas);
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('click', onClick);
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        canvas.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mouseup', onMouseUp);
+
+        // Empêcher le menu contextuel du clic droit sur la zone de jeu
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         WS.on('game_started', (data) => {
             state = data.state;
@@ -94,8 +108,10 @@ const Game = (() => {
         ctx.clearRect(0, 0, w, h);
 
         // Calculer les facteurs d'échelle (la topologie est dans ~900x700)
-        const scaleX = w / 900;
-        const scaleY = h / 700;
+        const baseW = 900;
+        const baseH = 700;
+        const scaleX = (w / baseW) * zoom;
+        const scaleY = (h / baseH) * zoom;
 
         // ── Dessiner les connexions ─────────────────────────────
         ctx.lineWidth = 1.2;
@@ -106,8 +122,8 @@ const Game = (() => {
                     const bothInfected = node.infected && target.infected;
                     ctx.strokeStyle = bothInfected ? COLORS.connectionInfected : COLORS.connection;
                     ctx.beginPath();
-                    ctx.moveTo(node.x * scaleX, node.y * scaleY);
-                    ctx.lineTo(target.x * scaleX, target.y * scaleY);
+                    ctx.moveTo(node.x * scaleX + offsetX, node.y * scaleY + offsetY);
+                    ctx.lineTo(target.x * scaleX + offsetX, target.y * scaleY + offsetY);
                     ctx.stroke();
                 }
             });
@@ -115,8 +131,8 @@ const Game = (() => {
 
         // ── Dessiner les nœuds ──────────────────────────────────
         state.nodes.forEach(node => {
-            const x = node.x * scaleX;
-            const y = node.y * scaleY;
+            const x = node.x * scaleX + offsetX;
+            const y = node.y * scaleY + offsetY;
             const radius = node === hoveredNode ? 10 : 7;
 
             let color;
@@ -159,8 +175,8 @@ const Game = (() => {
 
         // ── Dessiner les bulles ─────────────────────────────────
         (state.bubbles || []).forEach(bubble => {
-            const x = bubble.x * scaleX;
-            const y = bubble.y * scaleY;
+            const x = bubble.x * scaleX + offsetX;
+            const y = bubble.y * scaleY + offsetY;
             const colors = BUBBLE_COLORS[bubble.kind] || BUBBLE_COLORS.breach;
             const radius = bubble === hoveredBubble ? 22 : 18;
 
@@ -194,8 +210,8 @@ const Game = (() => {
         return {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top,
-            scaleX: canvas.width / 900,
-            scaleY: canvas.height / 700,
+            scaleX: (canvas.width / 900) * zoom,
+            scaleY: (canvas.height / 700) * zoom,
         };
     }
 
@@ -208,8 +224,8 @@ const Game = (() => {
 
         // Check bubbles first (they're on top)
         for (const b of (state.bubbles || [])) {
-            const bx = b.x * scaleX;
-            const by = b.y * scaleY;
+            const bx = b.x * scaleX + offsetX;
+            const by = b.y * scaleY + offsetY;
             if (Math.hypot(x - bx, y - by) < 22) {
                 hoveredBubble = b;
                 canvas.style.cursor = 'pointer';
@@ -219,8 +235,8 @@ const Game = (() => {
 
         // Check nodes
         for (const n of state.nodes) {
-            const nx = n.x * scaleX;
-            const ny = n.y * scaleY;
+            const nx = n.x * scaleX + offsetX;
+            const ny = n.y * scaleY + offsetY;
             if (Math.hypot(x - nx, y - ny) < 12) {
                 hoveredNode = n;
                 canvas.style.cursor = 'pointer';
@@ -235,16 +251,66 @@ const Game = (() => {
         if (!state) return;
         const { x, y, scaleX, scaleY } = getScaledPos(e);
 
-        // Click on bubble?
+        // Click on bubble? (zone de clic légèrement élargie pour plus de tolérance)
         for (const b of (state.bubbles || [])) {
-            const bx = b.x * scaleX;
-            const by = b.y * scaleY;
-            if (Math.hypot(x - bx, y - by) < 22) {
+            const bx = b.x * scaleX + offsetX;
+            const by = b.y * scaleY + offsetY;
+            if (Math.hypot(x - bx, y - by) < 26) {
                 WS.send('click_bubble', { bubble_id: b.id });
                 return;
             }
         }
     }
+
+    function onWheel(e) {
+        if (!state) return;
+        e.preventDefault();
+
+        const delta = e.deltaY;
+        const zoomFactor = 1.05;
+        const prevZoom = zoom;
+
+        if (delta < 0) {
+            zoom = Math.min(2.0, zoom * zoomFactor);
+        } else {
+            zoom = Math.max(0.6, zoom / zoomFactor);
+        }
+
+        // Zoom centré autour du curseur
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        offsetX = mouseX - (mouseX - offsetX) * (zoom / prevZoom);
+        offsetY = mouseY - (mouseY - offsetY) * (zoom / prevZoom);
+    }
+
+    function onMouseDown(e) {
+        if (!state) return;
+        // Bouton milieu ou droit pour le déplacement
+        if (e.button === 1 || e.button === 2) {
+            e.preventDefault();
+            isPanning = true;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+        }
+    }
+
+    function onMouseUp(e) {
+        if (isPanning) {
+            isPanning = false;
+        }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        const dx = e.clientX - lastPanX;
+        const dy = e.clientY - lastPanY;
+        lastPanX = e.clientX;
+        lastPanY = e.clientY;
+        offsetX += dx;
+        offsetY += dy;
+    });
 
     // ── HUD update ──────────────────────────────────────────────
     function updateHUD() {
@@ -258,8 +324,23 @@ const Game = (() => {
 
         // Suspicion bar
         const pct = Math.min(100, Math.max(0, state.suspicion));
-        document.getElementById('suspicion-fill').style.width = pct + '%';
-        document.getElementById('suspicion-text').textContent = Math.floor(pct) + '%';
+        const fill = document.getElementById('suspicion-fill');
+        const text = document.getElementById('suspicion-text');
+
+        fill.style.width = pct + '%';
+        text.textContent = Math.floor(pct) + '%';
+
+        // Feedback visuel plus riche en fonction du niveau de méfiance
+        fill.classList.remove('warning', 'critical');
+        text.classList.remove('warning', 'critical');
+
+        if (pct >= 80) {
+            fill.classList.add('critical');
+            text.classList.add('critical');
+        } else if (pct >= 40) {
+            fill.classList.add('warning');
+            text.classList.add('warning');
+        }
 
         // Node info
         document.getElementById('info-infected').textContent = state.infected_count;

@@ -28,7 +28,8 @@ from server.game_engine import process_tick, click_bubble, buy_upgrade
 # ── Configuration ────────────────────────────────────────────────────
 HOST = "0.0.0.0"
 PORT = 8765
-TICK_INTERVAL = 2.0  # secondes entre chaque tick
+# Tick un peu plus rapide pour donner une sensation de jeu plus vivant.
+TICK_INTERVAL = 1.5  # secondes entre chaque tick
 CLIENT_DIR = Path(__file__).resolve().parent.parent / "client"
 
 # Sessions actives : websocket → GameState
@@ -118,11 +119,27 @@ async def handler(ws):
                     malware_class = "worm"
 
                 state = create_new_game(user["user_id"], malware_class)
+                # Appliquer la difficulté envoyée par le client
+                difficulty = msg.get("difficulty", "normal")
+                if difficulty not in ("facile", "normal", "difficile"):
+                    difficulty = "normal"
+                state.difficulty = difficulty
                 party_id = save_party(user["user_id"], malware_class, state.to_json())
                 state.party_id = party_id
                 active_games[ws] = state
 
                 await send_json(ws, {"type": "game_started", "state": state.to_dict()})
+
+            elif action == "command":
+                # Commandes texte depuis le terminal
+                user = authenticated.get(ws)
+                state = active_games.get(ws)
+                if not user or not state:
+                    await send_json(ws, {"type": "command_result", "error": "Aucune partie active."})
+                    continue
+                from server.game_engine import execute_command
+                result = execute_command(state, msg.get("line", ""))
+                await send_json(ws, {"type": "command_result", **result})
 
             elif action == "click_bubble":
                 state = active_games.get(ws)

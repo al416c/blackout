@@ -79,8 +79,10 @@ def init_db():
 
     conn.commit()
 
-    # Seed upgrade data if empty
-    if cur.execute("SELECT COUNT(*) FROM upgrade").fetchone()[0] == 0:
+    # Seed / reseed upgrade data if peu d'entrées
+    count_up = cur.execute("SELECT COUNT(*) FROM upgrade").fetchone()[0]
+    if count_up < 10:
+        cur.execute("DELETE FROM upgrade")
         _seed_upgrades(cur)
         conn.commit()
 
@@ -96,20 +98,72 @@ def init_db():
 
 def _seed_upgrades(cur: sqlite3.Cursor):
     upgrades = [
-        # Branche Transmission
-        ("Phishing",          "transmission", 1, 100, {"propagation_bonus": 0.10}, -0.05, "E-mails piégés augmentant la propagation."),
-        ("Exploit Zero-Day",  "transmission", 2, 250, {"propagation_bonus": 0.25, "bypass_firewall": True}, -0.15, "Exploitation de failles inconnues."),
-        ("Infection Wi-Fi",   "transmission", 3, 400, {"propagation_bonus": 0.20, "wireless": True}, -0.10, "Propagation via réseaux sans fil."),
-        ("Clés USB",          "transmission", 4, 600, {"propagation_bonus": 0.15, "airgap_bypass": True}, 0.0, "Infection par support physique."),
+        # ── Transmission (propagation) ────────────────────────────
+        # Worm
+        ("Scan réseau massif", "transmission", 1, 80,
+         {"propagation_bonus": 0.10, "allowed_malware": ["worm"]},
+         -0.05,
+         "Optimisation du ver pour scanner rapidement de nouveaux hôtes."),
 
-        # Branche Symptômes
-        ("Keylogger",         "symptomes", 1, 120, {"income_bonus": 0.05, "data_capture": True}, -0.10, "Capture des frappes clavier."),
-        ("Cryptomineur",      "symptomes", 2, 300, {"passive_income": 5}, -0.25, "Génère des revenus passifs par tick."),
-        ("Destruction données","symptomes", 3, 500, {"damage": 0.30, "noise": 0.20}, -0.30, "Détruit les données des nœuds."),
+        ("Injection SMB", "transmission", 2, 200,
+         {"propagation_bonus": 0.20, "allowed_malware": ["worm"]},
+         -0.10,
+         "Exploitation de partages SMB pour se répliquer latéralement."),
 
-        # Branche Capacités
-        ("Chiffrement code",  "capacites", 1, 200, {"stealth": 0.20}, 0.20, "Rend le malware plus difficile à détecter."),
-        ("Désactivation logs","capacites", 2, 350, {"stealth": 0.35, "disable_logs": True}, 0.35, "Empêche la journalisation."),
+        # Trojan
+        ("Cheval de Troie bureautique", "transmission", 1, 100,
+         {"propagation_bonus": 0.08, "stealth": 0.10, "allowed_malware": ["trojan"]},
+         0.10,
+         "Pièces jointes bureautiques signées, difficiles à détecter."),
+
+        ("Mouvement latéral RDP", "transmission", 2, 220,
+         {"propagation_bonus": 0.12, "allowed_malware": ["trojan"]},
+         -0.05,
+         "Exploitation d'identifiants RDP compromis pour pivoter."),
+
+        # Ransomware
+        ("Propagation ver-ransom", "transmission", 1, 130,
+         {"propagation_bonus": 0.15, "allowed_malware": ["ransomware"]},
+         -0.15,
+         "Combinaison de techniques de ver et de ransomware."),
+
+        # Rootkit
+        ("Dropper furtif", "transmission", 1, 120,
+         {"propagation_bonus": 0.06, "stealth": 0.15, "allowed_malware": ["rootkit"]},
+         0.15,
+         "Charge utile cachée dans des binaires légitimes."),
+
+        # ── Symptômes (monétisation / dégâts) ─────────────────────
+        ("Keylogger furtif", "symptomes", 1, 140,
+         {"income_bonus": 0.05, "data_capture": True, "allowed_malware": ["trojan", "rootkit"]},
+         0.05,
+         "Enregistre les frappes clavier en limitant le bruit généré."),
+
+        ("Cryptomineur distribué", "symptomes", 2, 260,
+         {"passive_income": 8, "allowed_malware": ["worm", "ransomware"]},
+         -0.20,
+         "Détourne les ressources CPU des machines infectées."),
+
+        ("Chiffrement agressif", "symptomes", 3, 380,
+         {"damage": 0.40, "noise": 0.30, "allowed_malware": ["ransomware"]},
+         -0.30,
+         "Chiffre massivement les données, accélérant la détection."),
+
+        # ── Capacités (furtivité / défense) ───────────────────────
+        ("Chiffrement du code", "capacites", 1, 180,
+         {"stealth": 0.20, "allowed_malware": ["worm", "trojan", "ransomware", "rootkit"]},
+         0.20,
+         "Obfuscation et chiffrement rendant le binaire plus difficile à analyser."),
+
+        ("Désactivation avancée des logs", "capacites", 2, 320,
+         {"stealth": 0.35, "disable_logs": True, "allowed_malware": ["rootkit", "trojan"]},
+         0.35,
+         "Altère la journalisation système pour masquer les traces."),
+
+        ("Canal C2 chiffré", "capacites", 3, 260,
+         {"stealth": 0.15, "income_bonus": 0.05, "allowed_malware": ["ransomware", "trojan"]},
+         0.10,
+         "Canal de commande et contrôle chiffré pour exfiltrer en douceur."),
     ]
     for name, branch, tier, cost, effect, stealth, desc in upgrades:
         cur.execute(

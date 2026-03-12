@@ -217,6 +217,32 @@ input:focus { border-color: var(--accent); }
     margin-top: 2rem;
 }
 
+/* Difficulty select */
+.difficulty-select {
+    margin-top: 1.5rem;
+}
+.difficulty-select h3 {
+    margin-bottom: 0.6rem;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+.difficulty-options {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+.difficulty-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+.difficulty-options input[type="radio"] {
+    accent-color: var(--accent);
+}
+
 /* ── Leaderboard ───────────────────────────────────────────────── */
 #leaderboard-screen {
     justify-content: center;
@@ -284,32 +310,106 @@ input:focus { border-color: var(--accent); }
     border-radius: 7px;
     overflow: hidden;
     border: 1px solid var(--border);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.04);
 }
 .suspicion-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--yellow) 0%, var(--orange) 50%, var(--red) 100%);
-    transition: width 0.4s ease;
+    background: linear-gradient(90deg, var(--green) 0%, var(--yellow) 45%, var(--orange) 75%, var(--red) 100%);
+    transition: width 0.3s ease, box-shadow 0.3s ease;
     border-radius: 7px;
+}
+.suspicion-fill.warning {
+    box-shadow: 0 0 12px rgba(255, 153, 51, 0.5);
+}
+.suspicion-fill.critical {
+    animation: suspicion-pulse 1s infinite alternate;
+    box-shadow: 0 0 16px rgba(255, 34, 68, 0.7);
 }
 .suspicion-text {
     font-family: var(--mono);
     font-size: 0.85rem;
     font-weight: 700;
     min-width: 3em;
-    color: var(--yellow);
+    color: var(--green);
+    transition: color 0.3s ease;
 }
+.suspicion-text.warning { color: var(--orange); }
+.suspicion-text.critical { color: var(--red); }
 
 /* Game area */
 #game-area {
     flex: 1;
     position: relative;
     overflow: hidden;
+    background: radial-gradient(circle at 20% 0%, rgba(255, 51, 85, 0.08) 0%, transparent 55%),
+                radial-gradient(circle at 80% 100%, rgba(51, 136, 255, 0.08) 0%, transparent 55%),
+                var(--bg);
 }
 
 #network-canvas {
     width: 100%;
     height: 100%;
     display: block;
+}
+
+/* Terminal */
+#terminal-panel {
+    background: #050509;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+#terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+.terminal-title {
+    color: var(--green);
+    font-weight: 600;
+}
+.terminal-hint {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+}
+
+#terminal-output {
+    height: 120px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+.terminal-line {
+    line-height: 1.4;
+    color: var(--text);
+}
+.terminal-line.terminal-system {
+    color: var(--text-dim);
+}
+
+#terminal-input-line {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+}
+#terminal-input-line .prompt {
+    color: var(--green);
+}
+#terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
 }
 
 /* Node info bar */
@@ -347,7 +447,10 @@ input:focus { border-color: var(--accent); }
     transition: transform 0.3s;
     z-index: 5;
 }
-.side-panel.collapsed { transform: translateX(100%); }
+.side-panel.collapsed {
+    /* Laisse dépasser un onglet avec le bouton pour pouvoir rouvrir */
+    transform: translateX(calc(100% - 32px));
+}
 
 .side-panel h3 {
     display: flex;
@@ -438,6 +541,11 @@ input:focus { border-color: var(--accent); }
 }
 .overlay-content h2 { font-size: 2rem; margin-bottom: 0.5rem; }
 .overlay-content p { color: var(--text-dim); margin-bottom: 1rem; }
+
+@keyframes suspicion-pulse {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(1.02); }
+}
 
 /* ── Toast ─────────────────────────────────────────────────────── */
 #toast-container {

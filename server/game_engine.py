@@ -28,6 +28,18 @@ def process_tick(state: GameState) -> GameState:
     if m_totales == 0:
         return state
 
+    # ── Modificateurs de difficulté ──────────────────────────────
+    diff = (state.difficulty or "normal").lower()
+    if diff == "facile":
+        suspicion_mult = 0.7
+        income_mult = 1.2
+    elif diff == "difficile":
+        suspicion_mult = 1.25
+        income_mult = 0.9
+    else:
+        suspicion_mult = 1.0
+        income_mult = 1.0
+
     # ── 1. Propagation ───────────────────────────────────────────
     t_inf = profile["propagation"]
     m_mod = state.propagation_mod
@@ -53,7 +65,7 @@ def process_tick(state: GameState) -> GameState:
 
     # ── 2. Revenus ───────────────────────────────────────────────
     income = profile["income_per_node"]
-    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.5
+    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.5 * income_mult
     state.cpu_cycles += state.passive_income_bonus
 
     # Blue Team budget
@@ -64,7 +76,10 @@ def process_tick(state: GameState) -> GameState:
     stealth_factor = max(0.05, 1.0 - state.stealth_mod)
     b_total = state.infected_count * b_machine * stealth_factor
 
-    suspicion_increase = b_total * 0.3
+    # Légère réduction du gain de méfiance par tick pour laisser
+    # plus de temps au joueur avant le déploiement du patch,
+    # modulée par la difficulté.
+    suspicion_increase = b_total * 0.2 * suspicion_mult
     state.suspicion = min(100.0, state.suspicion + suspicion_increase)
 
     # ── 4. Événements Blue Team ──────────────────────────────────
@@ -95,12 +110,14 @@ def process_tick(state: GameState) -> GameState:
 
             # Détection → augmente encore la méfiance
             if "detection_rate" in effect:
-                state.suspicion = min(100.0, state.suspicion + effect["detection_rate"] * 10)
+                state.suspicion = min(100.0, state.suspicion + effect["detection_rate"] * 7)
 
     # ── 5. Patch de sécurité (méfiance = 100%) ──────────────────
     if state.suspicion >= 100.0 and not state.patch_deployed:
         state.patch_deployed = True
-        state.clean_rate = 0.15
+        # Patch légèrement plus efficace pour que la fin de partie
+        # soit plus tranchée une fois la Blue Team pleinement alertée.
+        state.clean_rate = 0.18
 
     # Nettoyage
     if state.patch_deployed:
@@ -168,11 +185,126 @@ def click_bubble(state: GameState, bubble_id: int) -> dict:
                 feedback = {"type": "attacker", "kind": b.kind, "gained": b.value}
             else:
                 # Bulles Blue Team — augmentent la méfiance pour le joueur
-                state.suspicion = min(100.0, state.suspicion + b.value * 0.5)
-                feedback = {"type": "defender", "kind": b.kind, "suspicion_added": b.value * 0.5}
+                # Bulles Blue Team moins punitives pour garder un rythme agréable.
+                suspicion_delta = b.value * 0.35
+                state.suspicion = min(100.0, state.suspicion + suspicion_delta)
+                feedback = {"type": "defender", "kind": b.kind, "suspicion_added": suspicion_delta}
             state.bubbles.pop(i)
             return feedback
     return {"error": "Bulle introuvable."}
+
+
+def execute_command(state: GameState, line: str) -> dict:
+    """
+    Interprète une ligne de commande du terminal.
+    Les commandes sont volontairement simples et "dans l'ambiance" hacking,
+    mais mappent sur des actions de gameplay existantes.
+    """
+    raw = (line or "").strip()
+    if not raw:
+        return {"ok": False, "output": "Aucune commande saisie."}
+
+    tokens = raw.split()
+    cmd = tokens[0].lower()
+    args = tokens[1:]
+
+    # Aide
+    if cmd in ("help", "aide", "?"):
+        return {
+            "ok": True,
+            "output": (
+                "Commandes disponibles :\n"
+                "  help                — Affiche cette aide.\n"
+                "  status              — Résumé de l'état du malware.\n"
+                "  nmap -A -sV         — Scan agressif du réseau (petit bonus de ressources).\n"
+                "  phishing start      — Lance une campagne de phishing (bonus CPU).\n"
+                "  upgrade phishing    — Tente d'acheter l'upgrade 'Phishing' (Transmission).\n"
+                "  upgrade crypto      — Tente d'acheter 'Cryptomineur' (Symptômes).\n"
+                "  log suspicion       — Affiche la jauge de méfiance actuelle."
+            ),
+        }
+
+    # Statut rapide
+    if cmd in ("status", "statut"):
+        msg = (
+            f"Tick: {state.tick} | Malware: {state.malware_class} | "
+            f"Nœuds infectés: {state.infected_count}/{state.total_nodes} | "
+            f"CPU: {int(state.cpu_cycles)} | Méfiance: {round(state.suspicion, 1)}%"
+        )
+        return {"ok": True, "output": msg}
+
+    # nmap / scan réseau — ambiance recon / petit bonus
+    if cmd == "nmap" or cmd == "scan":
+        flags = " ".join(args)
+        bonus = 5
+        if "-A" in flags and "-sV" in flags:
+            bonus = 10
+        state.cpu_cycles += bonus
+        return {
+            "ok": True,
+            "output": (
+                f"Scan réseau terminé ({flags or 'mode par défaut'}). "
+                f"Nouvelles surfaces d'attaque identifiées (+{bonus} CPU Cycles)."
+            ),
+        }
+
+    # Campagne de phishing — simple bonus de ressources
+    if cmd == "phishing":
+        if args and args[0].lower() == "start":
+            gain = max(8, int(state.infected_count * 1.5) or 8)
+            state.cpu_cycles += gain
+            return {
+                "ok": True,
+                "output": f"Campagne de phishing lancée. Plusieurs utilisateurs ont cliqué... (+{gain} CPU Cycles)",
+            }
+        return {
+            "ok": False,
+            "output": 'Syntaxe: "phishing start"',
+        }
+
+    # Upgrade par nom "symbolique"
+    if cmd == "upgrade":
+        if not args:
+            return {"ok": False, "output": 'Syntaxe: upgrade [phishing|crypto]'}
+
+        target = args[0].lower()
+        upgrades = get_all_upgrades()
+
+        def find_by_name_fragment(fragment: str):
+            for u in upgrades:
+                if fragment in u["name"].lower():
+                    return u
+            return None
+
+        if target == "phishing":
+            up = find_by_name_fragment("phishing")
+        elif target in ("crypto", "cryptomineur"):
+            up = find_by_name_fragment("cryptomineur")
+        else:
+            up = None
+
+        if not up:
+            return {"ok": False, "output": "Aucune amélioration correspondante trouvée."}
+
+        result = buy_upgrade(state, up["id"])
+        if result.get("ok"):
+            return {
+                "ok": True,
+                "output": f"Amélioration '{up['name']}' installée. CPU restants: {result['remaining_cycles']}.",
+            }
+        return {"ok": False, "output": result.get("error", "Achat impossible.")}
+
+    # Log suspicion
+    if cmd == "log" and args and args[0].lower() == "suspicion":
+        return {
+            "ok": True,
+            "output": f"Jauge de méfiance: {round(state.suspicion, 1)}%. Patch déployé: {bool(state.patch_deployed)}.",
+        }
+
+    return {
+        "ok": False,
+        "output": f"Commande inconnue: {cmd}. Tapez 'help' pour la liste des commandes.",
+    }
 
 
 def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
@@ -184,6 +316,11 @@ def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
     upgrade = next((u for u in upgrades if u["id"] == upgrade_id), None)
     if not upgrade:
         return {"ok": False, "error": "Amélioration inconnue."}
+
+    # Vérifier que cette amélioration est disponible pour la classe de malware actuelle
+    allowed = upgrade["effect_json"].get("allowed_malware")
+    if allowed and state.malware_class not in allowed:
+        return {"ok": False, "error": "Cette amélioration n'est pas compatible avec votre malware."}
 
     if state.cpu_cycles < upgrade["cost"]:
         return {"ok": False, "error": f"Pas assez de CPU Cycles ({upgrade['cost']} requis)."}

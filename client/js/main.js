@@ -5,6 +5,7 @@
 
 const App = (() => {
     let selectedMalware = 'worm';
+    let selectedDifficulty = 'normal';
 
     function init() {
         // Connexion WebSocket
@@ -25,9 +26,19 @@ const App = (() => {
             });
         });
 
+        // Sélection de difficulté
+        document.querySelectorAll('input[name="difficulty"]').forEach(input => {
+            input.addEventListener('change', () => {
+                selectedDifficulty = input.value || 'normal';
+            });
+        });
+
         // Bouton lancer la partie
         document.getElementById('btn-start-game').addEventListener('click', () => {
-            WS.send('new_game', { malware_class: selectedMalware });
+            WS.send('new_game', {
+                malware_class: selectedMalware,
+                difficulty: selectedDifficulty,
+            });
             showScreen('game');
         });
 

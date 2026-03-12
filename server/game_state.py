@@ -10,12 +10,15 @@ from typing import Optional
 
 
 # ── Constantes par classe de malware ─────────────────────────────────
+#
+# Ces valeurs sont légèrement plus généreuses en revenus et un peu moins
+# agressives en bruit pour rendre les parties plus dynamiques et lisibles.
 
 MALWARE_PROFILES = {
-    "worm":       {"propagation": 0.18, "noise_per_machine": 1.8, "income_per_node": 2, "start_infected": 2},
-    "trojan":     {"propagation": 0.10, "noise_per_machine": 0.6, "income_per_node": 3, "start_infected": 1},
-    "ransomware": {"propagation": 0.12, "noise_per_machine": 2.5, "income_per_node": 6, "start_infected": 1},
-    "rootkit":    {"propagation": 0.05, "noise_per_machine": 0.2, "income_per_node": 2, "start_infected": 1},
+    "worm":       {"propagation": 0.20, "noise_per_machine": 1.5, "income_per_node": 3.0, "start_infected": 2},
+    "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5, "income_per_node": 3.5, "start_infected": 1},
+    "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2, "income_per_node": 7.0, "start_infected": 1},
+    "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 2.5, "start_infected": 1},
 }
 
 
@@ -53,6 +56,7 @@ class GameState:
     party_id: Optional[int] = None
     user_id: int = 0
     malware_class: str = "worm"
+    difficulty: str = "normal"  # "facile" | "normal" | "difficile"
 
     tick: int = 0
     nodes: list[Node] = field(default_factory=list)
