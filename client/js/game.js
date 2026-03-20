@@ -15,8 +15,12 @@ const Game = (() => {
     let offsetX = 0;
     let offsetY = 0;
     let isPanning = false;
+    let isDragging = false;
     let lastPanX = 0;
     let lastPanY = 0;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const DRAG_THRESHOLD = 5;
 
     // Couleurs
     const COLORS = {
@@ -48,7 +52,6 @@ const Game = (() => {
 
         window.addEventListener('resize', resizeCanvas);
         canvas.addEventListener('mousemove', onMouseMove);
-        canvas.addEventListener('click', onClick);
         canvas.addEventListener('wheel', onWheel, { passive: false });
         canvas.addEventListener('mousedown', onMouseDown);
         window.addEventListener('mouseup', onMouseUp);
@@ -216,7 +219,7 @@ const Game = (() => {
     }
 
     function onMouseMove(e) {
-        if (!state) return;
+        if (!state || isDragging) return;
         const { x, y, scaleX, scaleY } = getScaledPos(e);
 
         hoveredNode = null;
@@ -248,6 +251,10 @@ const Game = (() => {
     }
 
     function onClick(e) {
+        // Géré via mousedown/mouseup avec seuil de drag
+    }
+
+    function handleClickAction(e) {
         if (!state) return;
         const { x, y, scaleX, scaleY } = getScaledPos(e);
 
@@ -287,19 +294,28 @@ const Game = (() => {
 
     function onMouseDown(e) {
         if (!state) return;
-        // Bouton milieu ou droit pour le déplacement
-        if (e.button === 1 || e.button === 2) {
+        // Clic gauche, milieu ou droit pour le déplacement
+        if (e.button === 0 || e.button === 1 || e.button === 2) {
             e.preventDefault();
             isPanning = true;
+            isDragging = false;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
             lastPanX = e.clientX;
             lastPanY = e.clientY;
         }
     }
 
     function onMouseUp(e) {
-        if (isPanning) {
-            isPanning = false;
+        if (isPanning && !isDragging && e.button === 0) {
+            // C'était un clic, pas un drag — traiter l'action
+            handleClickAction(e);
         }
+        if (isDragging) {
+            canvas.style.cursor = 'default';
+        }
+        isPanning = false;
+        isDragging = false;
     }
 
     window.addEventListener('mousemove', (e) => {
@@ -308,8 +324,20 @@ const Game = (() => {
         const dy = e.clientY - lastPanY;
         lastPanX = e.clientX;
         lastPanY = e.clientY;
-        offsetX += dx;
-        offsetY += dy;
+
+        if (!isDragging) {
+            const totalDx = e.clientX - dragStartX;
+            const totalDy = e.clientY - dragStartY;
+            if (Math.hypot(totalDx, totalDy) > DRAG_THRESHOLD) {
+                isDragging = true;
+                canvas.style.cursor = 'grabbing';
+            }
+        }
+
+        if (isDragging) {
+            offsetX += dx;
+            offsetY += dy;
+        }
     });
 
     // ── HUD update ──────────────────────────────────────────────

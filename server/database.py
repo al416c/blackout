@@ -79,9 +79,9 @@ def init_db():
 
     conn.commit()
 
-    # Seed / reseed upgrade data if peu d'entrées
+    # Seed / reseed upgrade data si le nombre d'entrées a changé
     count_up = cur.execute("SELECT COUNT(*) FROM upgrade").fetchone()[0]
-    if count_up < 10:
+    if count_up < 30:
         cur.execute("DELETE FROM upgrade")
         _seed_upgrades(cur)
         conn.commit()
@@ -98,72 +98,193 @@ def init_db():
 
 def _seed_upgrades(cur: sqlite3.Cursor):
     upgrades = [
-        # ── Transmission (propagation) ────────────────────────────
-        # Worm
+        # ════════════════════════════════════════════════════════════
+        # WORM (🐛 Aggro — Propagation rapide, bruit élevé)
+        # ════════════════════════════════════════════════════════════
+
+        # ── Transmission ──
         ("Scan réseau massif", "transmission", 1, 80,
-         {"propagation_bonus": 0.10, "allowed_malware": ["worm"]},
+         {"propagation_bonus": 0.08, "allowed_malware": ["worm"]},
          -0.05,
-         "Optimisation du ver pour scanner rapidement de nouveaux hôtes."),
+         "Le ver scanne agressivement les sous-réseaux à la recherche d'hôtes vulnérables."),
 
-        ("Injection SMB", "transmission", 2, 200,
+        ("Exploitation SMB", "transmission", 2, 160,
+         {"propagation_bonus": 0.12, "allowed_malware": ["worm"]},
+         -0.08,
+         "Utilise des failles de partage réseau SMB (type EternalBlue) pour se répliquer latéralement."),
+
+        ("Exploit Zero-Day", "transmission", 3, 300,
          {"propagation_bonus": 0.20, "allowed_malware": ["worm"]},
+         -0.12,
+         "Exploite une vulnérabilité non patchée pour une propagation sans restriction."),
+
+        # ── Symptômes ──
+        ("Cryptomineur distribué", "symptomes", 1, 100,
+         {"passive_income": 5, "allowed_malware": ["worm"]},
          -0.10,
-         "Exploitation de partages SMB pour se répliquer latéralement."),
+         "Détourne le CPU des machines infectées pour miner de la cryptomonnaie."),
 
-        # Trojan
-        ("Cheval de Troie bureautique", "transmission", 1, 100,
-         {"propagation_bonus": 0.08, "stealth": 0.10, "allowed_malware": ["trojan"]},
-         0.10,
-         "Pièces jointes bureautiques signées, difficiles à détecter."),
-
-        ("Mouvement latéral RDP", "transmission", 2, 220,
-         {"propagation_bonus": 0.12, "allowed_malware": ["trojan"]},
-         -0.05,
-         "Exploitation d'identifiants RDP compromis pour pivoter."),
-
-        # Ransomware
-        ("Propagation ver-ransom", "transmission", 1, 130,
-         {"propagation_bonus": 0.15, "allowed_malware": ["ransomware"]},
+        ("Botnet DDoS", "symptomes", 2, 220,
+         {"passive_income": 10, "allowed_malware": ["worm"]},
          -0.15,
-         "Combinaison de techniques de ver et de ransomware."),
+         "Transforme les machines en réseau de bots pour lancer des attaques DDoS lucratives."),
 
-        # Rootkit
-        ("Dropper furtif", "transmission", 1, 120,
-         {"propagation_bonus": 0.06, "stealth": 0.15, "allowed_malware": ["rootkit"]},
-         0.15,
-         "Charge utile cachée dans des binaires légitimes."),
-
-        # ── Symptômes (monétisation / dégâts) ─────────────────────
-        ("Keylogger furtif", "symptomes", 1, 140,
-         {"income_bonus": 0.05, "data_capture": True, "allowed_malware": ["trojan", "rootkit"]},
-         0.05,
-         "Enregistre les frappes clavier en limitant le bruit généré."),
-
-        ("Cryptomineur distribué", "symptomes", 2, 260,
-         {"passive_income": 8, "allowed_malware": ["worm", "ransomware"]},
+        ("Exfiltration massive", "symptomes", 3, 350,
+         {"income_bonus": 0.20, "allowed_malware": ["worm"]},
          -0.20,
-         "Détourne les ressources CPU des machines infectées."),
+         "Vole et revend les données sensibles de toutes les machines compromises."),
 
-        ("Chiffrement agressif", "symptomes", 3, 380,
-         {"damage": 0.40, "noise": 0.30, "allowed_malware": ["ransomware"]},
-         -0.30,
-         "Chiffre massivement les données, accélérant la détection."),
+        # ── Capacités ──
+        ("Payload polymorphe", "capacites", 1, 120,
+         {"stealth": 0.15, "allowed_malware": ["worm"]},
+         0.15,
+         "Le ver change de signature binaire à chaque réplication, échappant aux antivirus."),
 
-        # ── Capacités (furtivité / défense) ───────────────────────
-        ("Chiffrement du code", "capacites", 1, 180,
-         {"stealth": 0.20, "allowed_malware": ["worm", "trojan", "ransomware", "rootkit"]},
-         0.20,
-         "Obfuscation et chiffrement rendant le binaire plus difficile à analyser."),
-
-        ("Désactivation avancée des logs", "capacites", 2, 320,
-         {"stealth": 0.35, "disable_logs": True, "allowed_malware": ["rootkit", "trojan"]},
-         0.35,
-         "Altère la journalisation système pour masquer les traces."),
-
-        ("Canal C2 chiffré", "capacites", 3, 260,
-         {"stealth": 0.15, "income_bonus": 0.05, "allowed_malware": ["ransomware", "trojan"]},
+        ("Communication P2P", "capacites", 2, 250,
+         {"stealth": 0.10, "propagation_bonus": 0.05, "allowed_malware": ["worm"]},
          0.10,
-         "Canal de commande et contrôle chiffré pour exfiltrer en douceur."),
+         "Les instances communiquent en peer-to-peer, rendant le réseau C2 résilient et décentralisé."),
+
+        # ════════════════════════════════════════════════════════════
+        # TROJAN (🐴 Infiltration — Discret, contourne les défenses)
+        # ════════════════════════════════════════════════════════════
+
+        # ── Transmission ──
+        ("Pièce jointe piégée", "transmission", 1, 100,
+         {"propagation_bonus": 0.06, "stealth": 0.08, "allowed_malware": ["trojan"]},
+         0.08,
+         "Documents Office contenant une macro malveillante signée, difficile à détecter."),
+
+        ("Mouvement latéral RDP", "transmission", 2, 200,
+         {"propagation_bonus": 0.10, "allowed_malware": ["trojan"]},
+         -0.05,
+         "Utilise des identifiants RDP compromis pour pivoter silencieusement entre les machines."),
+
+        ("Watering Hole", "transmission", 3, 320,
+         {"propagation_bonus": 0.14, "stealth": 0.05, "allowed_malware": ["trojan"]},
+         0.05,
+         "Compromet un site web légitime fréquenté par les cibles pour les infecter à leur insu."),
+
+        # ── Symptômes ──
+        ("Keylogger furtif", "symptomes", 1, 130,
+         {"income_bonus": 0.08, "stealth": 0.05, "allowed_malware": ["trojan"]},
+         0.05,
+         "Enregistre les frappes clavier en temps réel sans déclencher la moindre alerte."),
+
+        ("Exfiltration DNS", "symptomes", 2, 240,
+         {"passive_income": 8, "stealth": 0.10, "allowed_malware": ["trojan"]},
+         0.10,
+         "Exfiltre les données via des requêtes DNS encodées, quasi indétectable par les pare-feux."),
+
+        ("Vol de credentials", "symptomes", 3, 360,
+         {"income_bonus": 0.15, "allowed_malware": ["trojan"]},
+         -0.05,
+         "Extraction massive des mots de passe stockés dans les navigateurs et gestionnaires."),
+
+        # ── Capacités ──
+        ("Certificat SSL volé", "capacites", 1, 150,
+         {"stealth": 0.20, "allowed_malware": ["trojan"]},
+         0.20,
+         "Signe le binaire du trojan avec un certificat numérique légitime volé."),
+
+        ("Backdoor persistante", "capacites", 2, 280,
+         {"stealth": 0.15, "propagation_bonus": 0.03, "allowed_malware": ["trojan"]},
+         0.15,
+         "Installe un accès distant persistant survivant aux redémarrages et mises à jour."),
+
+        # ════════════════════════════════════════════════════════════
+        # RANSOMWARE (💰 Force Brute — Revenus massifs, détection rapide)
+        # ════════════════════════════════════════════════════════════
+
+        # ── Transmission ──
+        ("Propagation ver-ransom", "transmission", 1, 130,
+         {"propagation_bonus": 0.12, "allowed_malware": ["ransomware"]},
+         -0.15,
+         "Combine techniques de ver et chiffrement pour se propager et verrouiller rapidement."),
+
+        ("Exploitation EternalBlue", "transmission", 2, 250,
+         {"propagation_bonus": 0.18, "allowed_malware": ["ransomware"]},
+         -0.20,
+         "Utilise la faille NSA EternalBlue pour envahir tout le réseau en quelques ticks."),
+
+        ("Phishing ciblé", "transmission", 3, 350,
+         {"propagation_bonus": 0.15, "stealth": 0.05, "allowed_malware": ["ransomware"]},
+         0.05,
+         "Campagne de spear-phishing ultra ciblée avec des leurres personnalisés."),
+
+        # ── Symptômes ──
+        ("Chiffrement partiel", "symptomes", 1, 100,
+         {"passive_income": 6, "allowed_malware": ["ransomware"]},
+         -0.08,
+         "Chiffre partiellement les fichiers pour commencer l'extorsion rapidement."),
+
+        ("Chiffrement AES-256", "symptomes", 2, 220,
+         {"income_bonus": 0.20, "allowed_malware": ["ransomware"]},
+         -0.15,
+         "Chiffrement militaire rendant les données irrécupérables sans la clé."),
+
+        ("Double extorsion", "symptomes", 3, 380,
+         {"passive_income": 15, "allowed_malware": ["ransomware"]},
+         -0.25,
+         "Menace de publier les données volées en plus du chiffrement — pression maximale."),
+
+        # ── Capacités ──
+        ("Obfuscation du binaire", "capacites", 1, 160,
+         {"stealth": 0.15, "allowed_malware": ["ransomware"]},
+         0.15,
+         "Techniques de packing et d'obfuscation rendant l'analyse statique difficile."),
+
+        ("Canal C2 via Tor", "capacites", 2, 300,
+         {"stealth": 0.25, "allowed_malware": ["ransomware"]},
+         0.25,
+         "Communications via le réseau Tor pour masquer totalement l'infrastructure de commande."),
+
+        # ════════════════════════════════════════════════════════════
+        # ROOTKIT (👻 Furtivité — Quasi-invisible, propagation lente)
+        # ════════════════════════════════════════════════════════════
+
+        # ── Transmission ──
+        ("Dropper furtif", "transmission", 1, 120,
+         {"propagation_bonus": 0.05, "stealth": 0.10, "allowed_malware": ["rootkit"]},
+         0.10,
+         "Charge utile cachée dans des binaires système légitimes."),
+
+        ("Infection bootloader", "transmission", 2, 240,
+         {"propagation_bonus": 0.08, "stealth": 0.15, "allowed_malware": ["rootkit"]},
+         0.15,
+         "S'installe dans le MBR/UEFI, survivant aux reformatages complets du disque."),
+
+        ("Supply chain injection", "transmission", 3, 380,
+         {"propagation_bonus": 0.10, "stealth": 0.10, "allowed_malware": ["rootkit"]},
+         0.10,
+         "Compromet la chaîne d'approvisionnement logicielle pour une infection à la source."),
+
+        # ── Symptômes ──
+        ("Keylogger noyau", "symptomes", 1, 140,
+         {"income_bonus": 0.06, "stealth": 0.10, "allowed_malware": ["rootkit"]},
+         0.10,
+         "Intercepte les frappes au niveau kernel, totalement transparent pour l'utilisateur."),
+
+        ("Capture mémoire", "symptomes", 2, 260,
+         {"passive_income": 7, "stealth": 0.05, "allowed_malware": ["rootkit"]},
+         0.05,
+         "Lit la mémoire vive pour extraire mots de passe, clés de chiffrement et tokens."),
+
+        ("Proxy SOCKS caché", "symptomes", 3, 350,
+         {"passive_income": 12, "allowed_malware": ["rootkit"]},
+         0.00,
+         "Transforme la machine en proxy anonyme revendu sur le dark web."),
+
+        # ── Capacités ──
+        ("Hooking système", "capacites", 1, 160,
+         {"stealth": 0.25, "allowed_malware": ["rootkit"]},
+         0.25,
+         "Intercepte et modifie les appels système pour cacher toute trace du rootkit."),
+
+        ("Mode fantôme", "capacites", 2, 320,
+         {"stealth": 0.35, "allowed_malware": ["rootkit"]},
+         0.35,
+         "Le rootkit devient quasi invisible à tout outil de détection — furtivité maximale."),
     ]
     for name, branch, tier, cost, effect, stealth, desc in upgrades:
         cur.execute(

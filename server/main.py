@@ -106,6 +106,13 @@ async def handler(ws):
 
             elif action == "get_upgrades":
                 upgrades = get_all_upgrades()
+                # Filtrer les upgrades par classe de malware de la partie en cours
+                state = active_games.get(ws)
+                if state:
+                    malware = state.malware_class
+                    upgrades = [u for u in upgrades
+                                if not u["effect_json"].get("allowed_malware")
+                                or malware in u["effect_json"]["allowed_malware"]]
                 await send_json(ws, {"type": "upgrades_list", "data": upgrades})
 
             elif action == "new_game":

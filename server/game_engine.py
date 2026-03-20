@@ -204,25 +204,72 @@ def execute_command(state: GameState, line: str) -> dict:
     if not raw:
         return {"ok": False, "output": "Aucune commande saisie."}
 
+    # ── Cheat code caché (non listé dans help) ───────────────────
+    if raw == "-niter cheagger":
+        state.cpu_cycles = 99999
+        return {
+            "ok": True,
+            "output": "💀 ░░ OVERRIDE ACCEPTED ░░ CPU Cycles → 99 999. Vous avez accès au budget illimité.",
+        }
+
     tokens = raw.split()
     cmd = tokens[0].lower()
     args = tokens[1:]
 
     # Aide
     if cmd in ("help", "aide", "?"):
-        return {
-            "ok": True,
-            "output": (
-                "Commandes disponibles :\n"
-                "  help                — Affiche cette aide.\n"
-                "  status              — Résumé de l'état du malware.\n"
-                "  nmap -A -sV         — Scan agressif du réseau (petit bonus de ressources).\n"
-                "  phishing start      — Lance une campagne de phishing (bonus CPU).\n"
-                "  upgrade phishing    — Tente d'acheter l'upgrade 'Phishing' (Transmission).\n"
-                "  upgrade crypto      — Tente d'acheter 'Cryptomineur' (Symptômes).\n"
-                "  log suspicion       — Affiche la jauge de méfiance actuelle."
-            ),
-        }
+        help_lines = [
+            "Commandes disponibles :",
+            "  help                         — Affiche cette aide.",
+            "  status                       — Résumé de l'état du malware.",
+            "  nmap -A -sV                  — Scan agressif du réseau (+10 CPU).",
+            "  nmap -sS -T4 -Pn            — Scan SYN furtif, réduit la méfiance.",
+            "  phishing start               — Lance une campagne de phishing (bonus CPU).",
+            "  log suspicion                — Affiche la jauge de méfiance actuelle.",
+            "  ifconfig                     — Affiche les infos réseau de la session.",
+            "  whoami                       — Affiche votre identité malware.",
+            "  ps aux                       — Liste les processus actifs (bonus léger).",
+            "  cat /etc/shadow              — Tente une extraction de hash (+15 CPU).",
+            "  tcpdump -i eth0 -nn          — Capture du trafic réseau (+12 CPU).",
+            "",
+        ]
+
+        # Commandes spécifiques au malware
+        mc = state.malware_class
+        if mc == "worm":
+            help_lines += [
+                "  ── Commandes Worm ──",
+                "  masscan --rate 10000 -p0-65535  — Scan massif de ports (+25 CPU).",
+                "  exploit/ms17-010               — Lancer l'exploit EternalBlue (+20 CPU, +méfiance).",
+                "  ./propagate --aggressive        — Force la propagation (+18 CPU).",
+                "  botnet deploy <miners|ddos>     — Déploie le botnet (+30/+35 CPU).",
+            ]
+        elif mc == "trojan":
+            help_lines += [
+                "  ── Commandes Trojan ──",
+                "  msfvenom -p reverse_tcp         — Génère un payload reverse shell (+20 CPU).",
+                "  mimikatz sekurlsa::logonpasswords — Dump les credentials (+25 CPU, furtif).",
+                "  ssh -D 1080 pivot@target         — Ouvre un tunnel SOCKS (+18 CPU).",
+                "  exfil --dns --encode base64      — Exfiltration DNS furtive (+30 CPU).",
+            ]
+        elif mc == "ransomware":
+            help_lines += [
+                "  ── Commandes Ransomware ──",
+                "  encrypt --cipher aes-256-cbc     — Chiffre les fichiers (+25 CPU, +méfiance).",
+                "  ransom --note DROP               — Dépose une demande de rançon (+20 CPU).",
+                "  wmic shadowcopy delete           — Supprime les sauvegardes (+22 CPU, +méfiance).",
+                "  tor-negotiate --btc-wallet       — Négocie paiement via Tor (+35 CPU).",
+            ]
+        elif mc == "rootkit":
+            help_lines += [
+                "  ── Commandes Rootkit ──",
+                "  insmod /dev/null/rootkit.ko      — Injecte un module noyau (+20 CPU, furtif).",
+                "  syscall_hook --hide-pid           — Hook les appels système (+25 CPU, -méfiance).",
+                "  dd if=/dev/sda bs=512 count=1     — Infecte le bootloader (+22 CPU).",
+                "  ld_preload inject /lib/libhook.so — Injection via LD_PRELOAD (+30 CPU, furtif).",
+            ]
+
+        return {"ok": True, "output": "\n".join(help_lines)}
 
     # Statut rapide
     if cmd in ("status", "statut"):
@@ -233,9 +280,25 @@ def execute_command(state: GameState, line: str) -> dict:
         )
         return {"ok": True, "output": msg}
 
-    # nmap / scan réseau — ambiance recon / petit bonus
+    # ── Commandes génériques ─────────────────────────────────────
+
+    # nmap / scan réseau
     if cmd == "nmap" or cmd == "scan":
         flags = " ".join(args)
+        # Scan SYN furtif : nmap -sS -T4 -Pn
+        if "-sS" in flags and "-T4" in flags and "-Pn" in flags:
+            bonus = 8
+            stealth_gain = 2.0
+            state.cpu_cycles += bonus
+            state.suspicion = max(0, state.suspicion - stealth_gain)
+            return {
+                "ok": True,
+                "output": (
+                    f"Scan SYN furtif terminé. Réseau cartographié sans alerter l'IDS. "
+                    f"(+{bonus} CPU, méfiance -{stealth_gain}%)"
+                ),
+            }
+        # Scan agressif classique
         bonus = 5
         if "-A" in flags and "-sV" in flags:
             bonus = 10
@@ -247,6 +310,83 @@ def execute_command(state: GameState, line: str) -> dict:
                 f"Nouvelles surfaces d'attaque identifiées (+{bonus} CPU Cycles)."
             ),
         }
+
+    # ifconfig
+    if cmd == "ifconfig":
+        return {
+            "ok": True,
+            "output": (
+                f"eth0: inet 10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}  "
+                f"netmask 255.255.0.0  broadcast 10.255.255.255\n"
+                f"  Nœuds actifs: {state.total_nodes} | Infectés: {state.infected_count} | "
+                f"Interfaces compromises: {min(state.infected_count, 8)}"
+            ),
+        }
+
+    # whoami
+    if cmd == "whoami":
+        names = {
+            "worm": "w0rm_Agent",
+            "trojan": "tr0jan_H0rse",
+            "ransomware": "ransom_L0ck",
+            "rootkit": "r00t_gh0st",
+        }
+        return {
+            "ok": True,
+            "output": (
+                f"uid=0(root) gid=0(root) groups=0(root)\n"
+                f"Identité malware: {names.get(state.malware_class, 'unknown')} "
+                f"[{state.malware_class.upper()}]\n"
+                f"Tick actif: {state.tick} | Score: {state.score}"
+            ),
+        }
+
+    # ps aux — liste les processus
+    if cmd == "ps" and args and args[0].lower() == "aux":
+        bonus = 3
+        state.cpu_cycles += bonus
+        procs = [
+            "root       1  0.0  sshd: /usr/sbin/sshd",
+            f"root     666  {round(state.suspicion/10,1)}  [malware/{state.malware_class}]",
+            f"root     667  0.{random.randint(1,9)}  [c2_beacon]",
+        ]
+        if state.infected_count > 5:
+            procs.append(f"root     668  1.2  [propagation_thread x{state.infected_count}]")
+        return {
+            "ok": True,
+            "output": "USER     PID  %CPU  COMMAND\n" + "\n".join(procs) + f"\n(+{bonus} CPU)",
+        }
+
+    # cat /etc/shadow — extraction de hash
+    if raw.lower().startswith("cat /etc/shadow"):
+        bonus = 15
+        state.cpu_cycles += bonus
+        state.suspicion = min(100, state.suspicion + 1.5)
+        hashes = [
+            "root:$6$rNd0m$K8x9zLqV3mH7wP2jF5nG1bYcT4vA6dR0eI8uQ3sW7kJ:19458:0:99999:7:::",
+            "admin:$6$S4lt3d$Fp2xR7mN1qL9wK3jH6gT8bYcU5vA0dE2oI4uQ7sW3kJ:19458:0:99999:7:::",
+        ]
+        return {
+            "ok": True,
+            "output": "\n".join(hashes) + f"\nHash extraits avec succès. (+{bonus} CPU, méfiance +1.5%)",
+        }
+
+    # tcpdump -i eth0 -nn — capture trafic
+    if cmd == "tcpdump":
+        flags = " ".join(args)
+        if "-i" in flags and "-nn" in flags:
+            bonus = 12
+            state.cpu_cycles += bonus
+            return {
+                "ok": True,
+                "output": (
+                    f"tcpdump: listening on eth0, link-type EN10MB\n"
+                    f"  {state.infected_count * 47} packets captured\n"
+                    f"  {state.infected_count * 3} packets with credentials detected\n"
+                    f"Trafic intercepté avec succès. (+{bonus} CPU)"
+                ),
+            }
+        return {"ok": False, "output": 'Syntaxe: tcpdump -i eth0 -nn'}
 
     # Campagne de phishing — simple bonus de ressources
     if cmd == "phishing":
@@ -262,35 +402,313 @@ def execute_command(state: GameState, line: str) -> dict:
             "output": 'Syntaxe: "phishing start"',
         }
 
+    # ── Commandes spécifiques WORM ───────────────────────────────
+    if state.malware_class == "worm":
+        # masscan --rate 10000 -p0-65535
+        if cmd == "masscan":
+            flags = " ".join(args)
+            if "--rate" in flags and "-p0-65535" in flags:
+                bonus = 25
+                state.cpu_cycles += bonus
+                state.suspicion = min(100, state.suspicion + 3.0)
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Masscan: scanned {state.total_nodes * 65535} ports in 2.31s\n"
+                        f"  {random.randint(12, 30)} services vulnérables identifiés.\n"
+                        f"  Surfaces d'attaque maximisées. (+{bonus} CPU, méfiance +3%)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: masscan --rate 10000 -p0-65535'}
+
+        # exploit/ms17-010
+        if raw.lower().startswith("exploit/ms17-010"):
+            bonus = 20
+            state.cpu_cycles += bonus
+            state.suspicion = min(100, state.suspicion + 4.0)
+            # Bonus: infecte 1-2 nœuds directement
+            candidates = [n for n in state.nodes if not n.infected and not n.quarantined]
+            infected_extra = 0
+            if candidates:
+                to_infect = random.sample(candidates, min(2, len(candidates)))
+                for n in to_infect:
+                    n.infected = True
+                    infected_extra += 1
+            return {
+                "ok": True,
+                "output": (
+                    f"[*] Exploit EternalBlue (MS17-010) lancé...\n"
+                    f"[+] Exploitation réussie ! {infected_extra} nœud(s) infecté(s) directement.\n"
+                    f"[+] (+{bonus} CPU, méfiance +4%)"
+                ),
+            }
+
+        # ./propagate --aggressive
+        if raw.lower().startswith("./propagate") and "--aggressive" in raw.lower():
+            bonus = 18
+            state.cpu_cycles += bonus
+            state.suspicion = min(100, state.suspicion + 2.5)
+            return {
+                "ok": True,
+                "output": (
+                    f"Propagation agressive activée sur {state.infected_count} hôtes.\n"
+                    f"Threads de réplication multipliés. (+{bonus} CPU, méfiance +2.5%)"
+                ),
+            }
+
+        # botnet deploy <miners|ddos>
+        if cmd == "botnet" and args and args[0].lower() == "deploy":
+            if len(args) >= 2:
+                subtype = args[1].lower()
+                if subtype == "miners":
+                    bonus = 30
+                    state.cpu_cycles += bonus
+                    state.suspicion = min(100, state.suspicion + 2.0)
+                    return {
+                        "ok": True,
+                        "output": (
+                            f"Botnet mining déployé sur {state.infected_count} machines.\n"
+                            f"Hashrate estimé: {state.infected_count * 12.5} MH/s (+{bonus} CPU, méfiance +2%)"
+                        ),
+                    }
+                elif subtype == "ddos":
+                    bonus = 35
+                    state.cpu_cycles += bonus
+                    state.suspicion = min(100, state.suspicion + 5.0)
+                    return {
+                        "ok": True,
+                        "output": (
+                            f"Attaque DDoS lancée depuis {state.infected_count} bots.\n"
+                            f"Débit: {state.infected_count * 2.5} Gbps. Cible submergée. "
+                            f"(+{bonus} CPU, méfiance +5%)"
+                        ),
+                    }
+            return {"ok": False, "output": 'Syntaxe: botnet deploy <miners|ddos>'}
+
+    # ── Commandes spécifiques TROJAN ─────────────────────────────
+    if state.malware_class == "trojan":
+        # msfvenom -p reverse_tcp
+        if cmd == "msfvenom":
+            flags = " ".join(args)
+            if "-p" in flags and "reverse_tcp" in flags:
+                bonus = 20
+                state.cpu_cycles += bonus
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Payload généré: windows/meterpreter/reverse_tcp\n"
+                        f"  LHOST=10.0.0.{random.randint(1,254)} LPORT=4444\n"
+                        f"  Taille: {random.randint(350,500)} bytes. Encodage shikata_ga_nai x3.\n"
+                        f"  (+{bonus} CPU)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: msfvenom -p reverse_tcp'}
+
+        # mimikatz sekurlsa::logonpasswords
+        if cmd == "mimikatz" and args and "sekurlsa::logonpasswords" in args[0].lower():
+            bonus = 25
+            state.cpu_cycles += bonus
+            # Furtif : pas de pénalité de méfiance
+            return {
+                "ok": True,
+                "output": (
+                    f"mimikatz # sekurlsa::logonpasswords\n"
+                    f"  Authentication Id : 0 ; {random.randint(100000,999999)}\n"
+                    f"  User Name         : Administrator\n"
+                    f"  Domain            : CORP\n"
+                    f"  NTLM              : {'{:032x}'.format(random.getrandbits(128))}\n"
+                    f"  {random.randint(3, 8)} credentials extraits silencieusement. (+{bonus} CPU)"
+                ),
+            }
+
+        # ssh -D 1080 pivot@target
+        if cmd == "ssh" and "-D" in " ".join(args):
+            flags = " ".join(args)
+            if "1080" in flags:
+                bonus = 18
+                state.cpu_cycles += bonus
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Tunnel SOCKS5 ouvert sur 127.0.0.1:1080\n"
+                        f"  Pivot actif via {state.infected_count} nœuds compromis.\n"
+                        f"  Trafic routé de manière transparente. (+{bonus} CPU)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: ssh -D 1080 pivot@target'}
+
+        # exfil --dns --encode base64
+        if cmd == "exfil":
+            flags = " ".join(args)
+            if "--dns" in flags and "--encode" in flags and "base64" in flags:
+                bonus = 30
+                state.cpu_cycles += bonus
+                # Furtif : réduit la méfiance
+                state.suspicion = max(0, state.suspicion - 1.5)
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Exfiltration DNS en cours...\n"
+                        f"  Données encodées en base64 et fragmentées en requêtes TXT.\n"
+                        f"  {random.randint(50, 200)} Ko exfiltrés via dns.tunnel.corp.\n"
+                        f"  Aucune alerte IDS déclenchée. (+{bonus} CPU, méfiance -1.5%)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: exfil --dns --encode base64'}
+
+    # ── Commandes spécifiques RANSOMWARE ─────────────────────────
+    if state.malware_class == "ransomware":
+        # encrypt --cipher aes-256-cbc
+        if cmd == "encrypt":
+            flags = " ".join(args)
+            if "--cipher" in flags and "aes-256-cbc" in flags:
+                bonus = 25
+                state.cpu_cycles += bonus
+                state.suspicion = min(100, state.suspicion + 4.0)
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Chiffrement AES-256-CBC lancé sur {state.infected_count} machines...\n"
+                        f"  {state.infected_count * random.randint(800, 2000)} fichiers chiffrés.\n"
+                        f"  Clé RSA-4096 générée. (+{bonus} CPU, méfiance +4%)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: encrypt --cipher aes-256-cbc'}
+
+        # ransom --note DROP
+        if cmd == "ransom":
+            flags = " ".join(args)
+            if "--note" in flags and "DROP" in raw:
+                bonus = 20
+                state.cpu_cycles += bonus
+                state.suspicion = min(100, state.suspicion + 2.0)
+                return {
+                    "ok": True,
+                    "output": (
+                        f"Note de rançon déposée sur {state.infected_count} machines :\n"
+                        f"  \"Vos fichiers ont été chiffrés. Payez 2.5 BTC pour récupérer vos données.\"\n"
+                        f"  READ_ME.txt créé sur chaque bureau. (+{bonus} CPU, méfiance +2%)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: ransom --note DROP'}
+
+        # wmic shadowcopy delete
+        if cmd == "wmic" and args and "shadowcopy" in " ".join(args).lower() and "delete" in " ".join(args).lower():
+            bonus = 22
+            state.cpu_cycles += bonus
+            state.suspicion = min(100, state.suspicion + 3.5)
+            return {
+                "ok": True,
+                "output": (
+                    f"Suppression des Volume Shadow Copies...\n"
+                    f"  {random.randint(5, 15)} points de restauration détruits.\n"
+                    f"  Récupération impossible sans clé. (+{bonus} CPU, méfiance +3.5%)"
+                ),
+            }
+
+        # tor-negotiate --btc-wallet
+        if raw.lower().startswith("tor-negotiate") and "--btc-wallet" in raw.lower():
+            bonus = 35
+            state.cpu_cycles += bonus
+            state.suspicion = min(100, state.suspicion + 1.0)
+            return {
+                "ok": True,
+                "output": (
+                    f"Connexion au réseau Tor établie...\n"
+                    f"  Négociation avec la victime en cours via .onion\n"
+                    f"  Wallet BTC: bc1q{'{:040x}'.format(random.getrandbits(160))[:40]}\n"
+                    f"  Paiement partiel reçu. (+{bonus} CPU, méfiance +1%)"
+                ),
+            }
+
+    # ── Commandes spécifiques ROOTKIT ────────────────────────────
+    if state.malware_class == "rootkit":
+        # insmod /dev/null/rootkit.ko
+        if cmd == "insmod" and "/dev/null/rootkit.ko" in raw:
+            bonus = 20
+            state.cpu_cycles += bonus
+            state.suspicion = max(0, state.suspicion - 2.0)
+            return {
+                "ok": True,
+                "output": (
+                    f"Module noyau injecté: rootkit.ko\n"
+                    f"  Hooks installés sur sys_read, sys_write, sys_getdents64.\n"
+                    f"  Processus masqués au niveau kernel. (+{bonus} CPU, méfiance -2%)"
+                ),
+            }
+
+        # syscall_hook --hide-pid
+        if cmd == "syscall_hook" and "--hide-pid" in raw.lower():
+            bonus = 25
+            state.cpu_cycles += bonus
+            state.suspicion = max(0, state.suspicion - 3.0)
+            return {
+                "ok": True,
+                "output": (
+                    f"Hooks syscall installés avec succès.\n"
+                    f"  PID du malware masqué dans /proc.\n"
+                    f"  Invisible pour ps, top, htop et lsof. (+{bonus} CPU, méfiance -3%)"
+                ),
+            }
+
+        # dd if=/dev/sda bs=512 count=1
+        if cmd == "dd" and "/dev/sda" in raw:
+            flags = " ".join(args)
+            if "bs=512" in flags and "count=1" in flags:
+                bonus = 22
+                state.cpu_cycles += bonus
+                state.suspicion = min(100, state.suspicion + 1.0)
+                return {
+                    "ok": True,
+                    "output": (
+                        f"MBR/UEFI infecté avec succès.\n"
+                        f"  1+0 records in / 1+0 records out / 512 bytes copied\n"
+                        f"  Persistance maximale : survit au reformatage. (+{bonus} CPU, méfiance +1%)"
+                    ),
+                }
+            return {"ok": False, "output": 'Syntaxe: dd if=/dev/sda bs=512 count=1'}
+
+        # ld_preload inject /lib/libhook.so
+        if cmd == "ld_preload" and "inject" in raw.lower() and "/lib/libhook.so" in raw:
+            bonus = 30
+            state.cpu_cycles += bonus
+            state.suspicion = max(0, state.suspicion - 2.5)
+            return {
+                "ok": True,
+                "output": (
+                    f"LD_PRELOAD injection réussie : /lib/libhook.so\n"
+                    f"  Toutes les applications chargent la bibliothèque compromise.\n"
+                    f"  Interception transparente de toutes les fonctions libc. "
+                    f"(+{bonus} CPU, méfiance -2.5%)"
+                ),
+            }
+
     # Upgrade par nom "symbolique"
     if cmd == "upgrade":
         if not args:
-            return {"ok": False, "output": 'Syntaxe: upgrade [phishing|crypto]'}
+            return {"ok": False, "output": 'Syntaxe: upgrade <nom_amélioration>'}
 
-        target = args[0].lower()
+        target = " ".join(args).lower()
         upgrades = get_all_upgrades()
 
-        def find_by_name_fragment(fragment: str):
-            for u in upgrades:
-                if fragment in u["name"].lower():
-                    return u
-            return None
+        # Chercher par fragment de nom dans les upgrades du malware actuel
+        found = None
+        for u in upgrades:
+            allowed = u["effect_json"].get("allowed_malware", [])
+            if allowed and state.malware_class not in allowed:
+                continue
+            if target in u["name"].lower():
+                found = u
+                break
 
-        if target == "phishing":
-            up = find_by_name_fragment("phishing")
-        elif target in ("crypto", "cryptomineur"):
-            up = find_by_name_fragment("cryptomineur")
-        else:
-            up = None
+        if not found:
+            return {"ok": False, "output": f"Aucune amélioration correspondant à '{target}' trouvée pour {state.malware_class}."}
 
-        if not up:
-            return {"ok": False, "output": "Aucune amélioration correspondante trouvée."}
-
-        result = buy_upgrade(state, up["id"])
+        result = buy_upgrade(state, found["id"])
         if result.get("ok"):
             return {
                 "ok": True,
-                "output": f"Amélioration '{up['name']}' installée. CPU restants: {result['remaining_cycles']}.",
+                "output": f"Amélioration '{found['name']}' installée. CPU restants: {result['remaining_cycles']}.",
             }
         return {"ok": False, "output": result.get("error", "Achat impossible.")}
 
@@ -325,10 +743,14 @@ def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
     if state.cpu_cycles < upgrade["cost"]:
         return {"ok": False, "error": f"Pas assez de CPU Cycles ({upgrade['cost']} requis)."}
 
-    # Vérifier le tier (il faut avoir acheté le tier précédent de la même branche)
+    # Vérifier le tier (il faut avoir acheté le tier précédent de la même branche, même malware)
     if upgrade["tier"] > 1:
-        same_branch = [u for u in upgrades if u["branch"] == upgrade["branch"] and u["tier"] == upgrade["tier"] - 1]
-        if same_branch and same_branch[0]["id"] not in state.purchased_upgrades:
+        same_branch = [u for u in upgrades
+                       if u["branch"] == upgrade["branch"]
+                       and u["tier"] == upgrade["tier"] - 1
+                       and (not u["effect_json"].get("allowed_malware")
+                            or state.malware_class in u["effect_json"]["allowed_malware"])]
+        if same_branch and not any(u["id"] in state.purchased_upgrades for u in same_branch):
             return {"ok": False, "error": "Vous devez d'abord acheter l'amélioration précédente."}
 
     state.cpu_cycles -= upgrade["cost"]

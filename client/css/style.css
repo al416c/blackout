@@ -442,34 +442,49 @@ input:focus { border-color: var(--accent); }
     height: 100%;
     background: var(--bg-panel);
     border-left: 1px solid var(--border);
-    padding: 1rem;
-    overflow-y: auto;
+    padding: 1rem 1rem 1rem 40px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     transition: transform 0.3s;
     z-index: 5;
 }
 .side-panel.collapsed {
-    /* Laisse dépasser un onglet avec le bouton pour pouvoir rouvrir */
-    transform: translateX(calc(100% - 32px));
-}
-
-.side-panel h3 {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    font-size: 1rem;
+    transform: translateX(calc(100% - 36px));
 }
 
 .btn-toggle {
-    background: transparent;
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--text-dim);
     border-radius: 4px;
-    padding: 0.2rem 0.5rem;
+    padding: 0.4rem 0.3rem;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    z-index: 6;
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
 }
 .btn-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+.panel-title {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+#upgrade-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+}
 
 /* Upgrade tree */
 .upgrade-branch { margin-bottom: 1.2rem; }
