@@ -104,6 +104,13 @@ const Game = (() => {
         })();
     }
 
+    const loadedBubbleIcons = {};
+    const BUBBLE_IMAGES = {
+        'breach': 'img/icons/currency.png',
+        'crypto': 'img/icons/currency.png',
+        'dna': 'img/icons/dna.png'
+    };
+
     function render() {
         if (!state || !ctx) return;
         const w = canvas.width;
@@ -199,11 +206,41 @@ const Game = (() => {
             ctx.restore();
 
             // Texte
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`+${bubble.value}`, x, y);
+            // Draw image instead of pure text if we have it
+            let imgData = loadedBubbleIcons[bubble.kind];
+            if (!imgData) {
+                const img = new Image();
+                img.src = BUBBLE_IMAGES[bubble.kind] || BUBBLE_IMAGES.breach;
+                loadedBubbleIcons[bubble.kind] = { image: img, loaded: false };
+                img.onload = () => { loadedBubbleIcons[bubble.kind].loaded = true; };
+                imgData = loadedBubbleIcons[bubble.kind];
+            }
+
+            if (imgData && imgData.loaded) {
+                // Drop shadow for the image so it stands out
+                ctx.save();
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                // Draw image centered in bubble
+                const imgSize = 24; // User requested aggrandir
+                ctx.drawImage(imgData.image, x - imgSize/2, y - imgSize/2 - 2, imgSize, imgSize);
+                ctx.restore();
+
+                // Draw value below
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Move text slightly down
+                ctx.fillText(`+${bubble.value}`, x, y + 10);
+            } else {
+                // Fallback to text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`+${bubble.value}`, x, y);
+            }
         });
     }
 

@@ -600,3 +600,66 @@ input:focus { border-color: var(--accent); }
     .side-panel { width: 240px; }
     .game-title { font-size: 2.5rem; }
 }
+/* ── Menu & Auth White OVERRIDE ──────────────────────────────────── */
+
+#auth-screen, #menu-screen {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+#auth-screen .game-title, #menu-screen .game-title {
+    color: #000000 !important;
+    text-shadow: none !important;
+}
+#auth-screen .accent, #menu-screen .accent { color: #000 !important; }
+#auth-screen .subtitle, #menu-screen .subtitle { color: #555 !important; }
+
+#auth-tabs .tab { color: #555; border-color: #ddd; }
+#auth-tabs .tab.active { background: #000 !important; color: #fff !important; border-color: #000 !important; }
+
+#auth-screen input, #menu-screen input {
+    background: #f5f5f5 !important;
+    border-color: #ccc !important;
+    color: #000 !important;
+}
+#auth-screen input:focus, #menu-screen input:focus { border-color: #000 !important; }
+
+#auth-screen .btn-primary, #menu-screen .btn-primary { background: #000 !important; color: #fff !important; }
+#auth-screen .btn-primary:hover, #menu-screen .btn-primary:hover { background: #333 !important; }
+
+#auth-screen .btn-secondary, #menu-screen .btn-secondary { background: #f5f5f5 !important; color: #000 !important; border-color: #ccc !important; }
+#auth-screen .btn-secondary:hover, #menu-screen .btn-secondary:hover { border-color: #000 !important; }
+
+#auth-screen .btn-ghost, #menu-screen .btn-ghost { color: #555 !important; }
+#auth-screen .btn-ghost:hover, #menu-screen .btn-ghost:hover { color: #000 !important; border-color: #ccc !important; }
+
+.malware-select h3 { color: #333 !important; }
+.malware-card { background: #f5f5f5 !important; border-color: #ccc !important; color: #000 !important; }
+.malware-card:hover { border-color: #000 !important; }
+.malware-card.selected {
+    border-color: #000 !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1) !important;
+}
+.malware-type { color: #000 !important; border-color: #000 !important; }
+.malware-card p { color: #555 !important; }
+.malware-card h4 { color: #000 !important; }
+.difficulty-options label { color: #000 !important; }
+
+/* Icon styles */
+.menu-icon, .branch-icon, .currency-icon {
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    margin-right: 8px;
+    display: inline-block;
+}
+.currency-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    margin-right: 0;
+}
+.malware-icon img {
+    width: 64px;
+    height: 64px;
+}

@@ -7,9 +7,9 @@ const Upgrades = (() => {
     let purchasedIds = [];
 
     const BRANCH_NAMES = {
-        transmission: '📡 Transmission',
-        symptomes: '💀 Symptômes',
-        capacites: '🛡️ Capacités',
+        transmission: '<img src="img/icons/transmission.png" class="branch-icon" alt=""> Transmission',
+        symptomes: '<img src="img/icons/symptoms.png" class="branch-icon" alt=""> Symptômes',
+        capacites: '<img src="img/icons/capacities.png" class="branch-icon" alt=""> Capacités',
     };
 
     function init() {
@@ -59,7 +59,7 @@ const Upgrades = (() => {
 
             const title = document.createElement('div');
             title.className = 'upgrade-branch-title';
-            title.textContent = BRANCH_NAMES[branch] || branch;
+            title.innerHTML = BRANCH_NAMES[branch] || branch;
             div.appendChild(title);
 
             upgrades.sort((a, b) => a.tier - b.tier);
@@ -79,7 +79,7 @@ const Upgrades = (() => {
 
                 item.innerHTML = `
                     <span class="upgrade-name">${u.name}</span>
-                    <span class="upgrade-cost">${purchased ? '✓' : u.cost + ' ⚡'}</span>
+                    <span class="upgrade-cost">${purchased ? '✓' : u.cost + ' <img src="img/icons/currency.png" class="currency-icon" alt="⚡">'}</span>
                 `;
                 item.title = u.description || '';
 

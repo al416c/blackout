@@ -17,6 +17,13 @@ const Terminal = (() => {
                 e.preventDefault();
                 const line = inputEl.value.trim();
                 if (!line) return;
+
+                if (line.toLowerCase() === 'clear') {
+                    outputEl.innerHTML = '';
+                    inputEl.value = '';
+                    return;
+                }
+
                 appendLine(`root@blackout:~# ${line}`);
                 inputEl.value = '';
                 WS.send('command', { line });
