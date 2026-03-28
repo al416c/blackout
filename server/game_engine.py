@@ -218,58 +218,74 @@ def execute_command(state: GameState, line: str) -> dict:
 
     # Aide
     if cmd in ("help", "aide", "?"):
-        help_lines = [
-            "Commandes disponibles :",
-            "  help                         — Affiche cette aide.",
-            "  status                       — Résumé de l'état du malware.",
-            "  nmap -A -sV                  — Scan agressif du réseau (+10 CPU).",
-            "  nmap -sS -T4 -Pn            — Scan SYN furtif, réduit la méfiance.",
-            "  phishing start               — Lance une campagne de phishing (bonus CPU).",
-            "  log suspicion                — Affiche la jauge de méfiance actuelle.",
-            "  ifconfig                     — Affiche les infos réseau de la session.",
-            "  whoami                       — Affiche votre identité malware.",
-            "  ps aux                       — Liste les processus actifs (bonus léger).",
-            "  cat /etc/shadow              — Tente une extraction de hash (+15 CPU).",
-            "  tcpdump -i eth0 -nn          — Capture du trafic réseau (+12 CPU).",
-            "",
+        mc = state.malware_class
+
+        common_commands = [
+            ("help", "Affiche cette aide."),
+            ("status", "Resume de l'etat du malware."),
+            ("nmap -A -sV", "Scan agressif du reseau (+10 CPU)."),
+            ("nmap -sS -T4 -Pn", "Scan SYN furtif, reduit la mefiance."),
+            ("phishing start", "Lance une campagne de phishing (bonus CPU)."),
+            ("log suspicion", "Affiche la jauge de mefiance actuelle."),
+            ("ifconfig", "Affiche les infos reseau de la session."),
+            ("whoami", "Affiche votre identite malware."),
+            ("ps aux", "Liste les processus actifs (bonus leger)."),
+            ("cat /etc/shadow", "Tente une extraction de hash (+15 CPU)."),
+            ("tcpdump -i eth0 -nn", "Capture du trafic reseau (+12 CPU)."),
         ]
 
-        # Commandes spécifiques au malware
-        mc = state.malware_class
-        if mc == "worm":
-            help_lines += [
-                "  ── Commandes Worm ──",
-                "  masscan --rate 10000 -p0-65535  — Scan massif de ports (+25 CPU).",
-                "  exploit/ms17-010               — Lancer l'exploit EternalBlue (+20 CPU, +méfiance).",
-                "  ./propagate --aggressive        — Force la propagation (+18 CPU).",
-                "  botnet deploy <miners|ddos>     — Déploie le botnet (+30/+35 CPU).",
-            ]
-        elif mc == "trojan":
-            help_lines += [
-                "  ── Commandes Trojan ──",
-                "  msfvenom -p reverse_tcp         — Génère un payload reverse shell (+20 CPU).",
-                "  mimikatz sekurlsa::logonpasswords — Dump les credentials (+25 CPU, furtif).",
-                "  ssh -D 1080 pivot@target         — Ouvre un tunnel SOCKS (+18 CPU).",
-                "  exfil --dns --encode base64      — Exfiltration DNS furtive (+30 CPU).",
-            ]
-        elif mc == "ransomware":
-            help_lines += [
-                "  ── Commandes Ransomware ──",
-                "  encrypt --cipher aes-256-cbc     — Chiffre les fichiers (+25 CPU, +méfiance).",
-                "  ransom --note DROP               — Dépose une demande de rançon (+20 CPU).",
-                "  wmic shadowcopy delete           — Supprime les sauvegardes (+22 CPU, +méfiance).",
-                "  tor-negotiate --btc-wallet       — Négocie paiement via Tor (+35 CPU).",
-            ]
-        elif mc == "rootkit":
-            help_lines += [
-                "  ── Commandes Rootkit ──",
-                "  insmod /dev/null/rootkit.ko      — Injecte un module noyau (+20 CPU, furtif).",
-                "  syscall_hook --hide-pid           — Hook les appels système (+25 CPU, -méfiance).",
-                "  dd if=/dev/sda bs=512 count=1     — Infecte le bootloader (+22 CPU).",
-                "  ld_preload inject /lib/libhook.so — Injection via LD_PRELOAD (+30 CPU, furtif).",
-            ]
+        malware_commands = {
+            "worm": [
+                ("masscan --rate 10000 -p0-65535", "Scan massif de ports (+25 CPU)."),
+                ("exploit/ms17-010", "Lance l'exploit EternalBlue (+20 CPU, +mefiance)."),
+                ("./propagate --aggressive", "Force la propagation (+18 CPU)."),
+                ("botnet deploy <miners|ddos>", "Deploie le botnet (+30/+35 CPU)."),
+            ],
+            "trojan": [
+                ("msfvenom -p reverse_tcp", "Genere un payload reverse shell (+20 CPU)."),
+                ("mimikatz sekurlsa::logonpasswords", "Dump les credentials (+25 CPU, furtif)."),
+                ("ssh -D 1080 pivot@target", "Ouvre un tunnel SOCKS (+18 CPU)."),
+                ("exfil --dns --encode base64", "Exfiltration DNS furtive (+30 CPU)."),
+            ],
+            "ransomware": [
+                ("encrypt --cipher aes-256-cbc", "Chiffre les fichiers (+25 CPU, +mefiance)."),
+                ("ransom --note DROP", "Depose une demande de rancon (+20 CPU)."),
+                ("wmic shadowcopy delete", "Supprime les sauvegardes (+22 CPU, +mefiance)."),
+                ("tor-negotiate --btc-wallet", "Negocie paiement via Tor (+35 CPU)."),
+            ],
+            "rootkit": [
+                ("insmod /dev/null/rootkit.ko", "Injecte un module noyau (+20 CPU, furtif)."),
+                ("syscall_hook --hide-pid", "Hook les appels systeme (+25 CPU, -mefiance)."),
+                ("dd if=/dev/sda bs=512 count=1", "Infecte le bootloader (+22 CPU)."),
+                ("ld_preload inject /lib/libhook.so", "Injection via LD_PRELOAD (+30 CPU, furtif)."),
+            ],
+        }
 
-        return {"ok": True, "output": "\n".join(help_lines)}
+        cmd_width = max(
+            max(len(name) for name, _ in common_commands),
+            max(len(name) for name, _ in malware_commands.get(mc, [])),
+        )
+
+        rows = [f"{name.ljust(cmd_width)} - {desc}" for name, desc in common_commands]
+        rows.append("")
+        rows.append(f"[{mc.upper()}]")
+        rows.extend(
+            f"{name.ljust(cmd_width)} - {desc}"
+            for name, desc in malware_commands.get(mc, [])
+        )
+
+        title = "AVAILABLE COMMANDS"
+        inner_width = max(len(title), *(len(row) for row in rows))
+
+        boxed = []
+        boxed.append("┌" + "─" * (inner_width + 2) + "┐")
+        boxed.append(f"│ {title.ljust(inner_width)} │")
+        boxed.append("├" + "─" * (inner_width + 2) + "┤")
+        for row in rows:
+            boxed.append(f"│ {row.ljust(inner_width)} │")
+        boxed.append("└" + "─" * (inner_width + 2) + "┘")
+
+        return {"ok": True, "output": "\n".join(boxed)}
 
     # Statut rapide
     if cmd in ("status", "statut"):

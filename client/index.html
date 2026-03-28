@@ -169,8 +169,16 @@
         <div id="terminal-panel">
             <div id="terminal-header">
                 <span class="terminal-title">Terminal BLACKOUT</span>
-                <span class="terminal-hint">Tapez <code>help</code> pour voir les commandes.</span>
+                <div class="terminal-header-right">
+                    <span class="terminal-hint">Tapez <code>help</code> pour voir les commandes.</span>
+                    <div class="terminal-resize-controls">
+                        <button id="terminal-shrink" type="button" class="terminal-resize-btn" title="Réduire le terminal">-</button>
+                        <button id="terminal-reset" type="button" class="terminal-resize-btn" title="Taille par défaut">□</button>
+                        <button id="terminal-grow" type="button" class="terminal-resize-btn" title="Agrandir le terminal">+</button>
+                    </div>
+                </div>
             </div>
+            <div id="terminal-resize-handle" title="Glissez pour redimensionner le terminal"></div>
             <div id="terminal-output"></div>
             <div id="terminal-input-line">
                 <span class="prompt">root@blackout:~#</span>

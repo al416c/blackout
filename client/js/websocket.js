@@ -5,7 +5,9 @@
 
 const WS = (() => {
     let socket = null;
+    let reconnectTimer = null;
     const listeners = {};
+    const pendingMessages = [];
 
     function connect() {
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -15,6 +17,10 @@ const WS = (() => {
 
         socket.addEventListener('open', () => {
             console.log('[WS] Connecté au serveur');
+            // Envoyer les actions tapées avant la connexion (ex: login rapide au chargement).
+            while (pendingMessages.length > 0 && socket.readyState === WebSocket.OPEN) {
+                socket.send(pendingMessages.shift());
+            }
             emit('connected');
         });
 
@@ -30,7 +36,8 @@ const WS = (() => {
         socket.addEventListener('close', () => {
             console.log('[WS] Déconnecté — tentative de reconnexion...');
             emit('disconnected');
-            setTimeout(connect, 3000);
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connect, 3000);
         });
 
         socket.addEventListener('error', (err) => {
@@ -39,10 +46,12 @@ const WS = (() => {
     }
 
     function send(action, data = {}) {
+        const payload = JSON.stringify({ action, ...data });
         if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ action, ...data }));
+            socket.send(payload);
         } else {
-            console.warn('[WS] Socket non connecté, action ignorée:', action);
+            console.warn('[WS] Socket non connecté, action mise en attente:', action);
+            pendingMessages.push(payload);
         }
     }
 
