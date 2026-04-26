@@ -19,6 +19,7 @@ from websockets.datastructures import Headers
 from server.database import (
     init_db, get_leaderboard, get_all_upgrades, get_blueteam_events,
     save_party, update_party, end_party, update_user_stats,
+    get_all_config, get_config, set_config, delete_config,
 )
 from server.auth import register, login
 from server.game_state import create_new_game, GameState
@@ -29,7 +30,7 @@ from server.game_engine import process_tick, click_bubble, buy_upgrade
 HOST = "0.0.0.0"
 PORT = 8765
 # Tick un peu plus rapide pour donner une sensation de jeu plus vivant.
-TICK_INTERVAL = 1.5  # secondes entre chaque tick
+TICK_INTERVAL = 2.0  # secondes entre chaque tick
 CLIENT_DIR = Path(__file__).resolve().parent.parent / "client"
 
 # Sessions actives : websocket → GameState
@@ -163,6 +164,31 @@ async def handler(ws):
                     continue
                 result = buy_upgrade(state, msg.get("upgrade_id", -1))
                 await send_json(ws, {"type": "upgrade_result", **result})
+
+            elif action == "get_config":
+                await send_json(ws, {"type": "config_list", "data": get_all_config()})
+
+            elif action == "set_config":
+                user = authenticated.get(ws)
+                if not user:
+                    await send_json(ws, {"type": "error", "message": "Non authentifie."})
+                    continue
+                key = msg.get("key", "").strip()
+                value = str(msg.get("value", "")).strip()
+                if not key or not value:
+                    await send_json(ws, {"type": "error", "message": "Cle ou valeur manquante."})
+                    continue
+                set_config(key, value)
+                await send_json(ws, {"type": "config_updated", "key": key, "value": value})
+
+            elif action == "delete_config":
+                user = authenticated.get(ws)
+                if not user:
+                    await send_json(ws, {"type": "error", "message": "Non authentifie."})
+                    continue
+                key = msg.get("key", "").strip()
+                deleted = delete_config(key)
+                await send_json(ws, {"type": "config_deleted", "key": key, "ok": deleted})
 
             elif action == "ping":
                 await send_json(ws, {"type": "pong"})

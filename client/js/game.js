@@ -51,6 +51,9 @@ const Game = (() => {
         ctx = canvas.getContext('2d');
 
         window.addEventListener('resize', resizeCanvas);
+        // ResizeObserver capte aussi le resize du terminal (drag handle)
+        const ro = new ResizeObserver(() => resizeCanvas());
+        ro.observe(canvas.parentElement);
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('wheel', onWheel, { passive: false });
         canvas.addEventListener('mousedown', onMouseDown);
@@ -71,6 +74,7 @@ const Game = (() => {
             state = data.state;
             updateHUD();
             Upgrades.updatePurchased(state.purchased_upgrades);
+            Upgrades.updateStats(state);
         });
 
         WS.on('game_over', (data) => {
@@ -79,7 +83,7 @@ const Game = (() => {
 
         WS.on('bubble_feedback', (data) => {
             if (data.error) {
-                App.toast(data.error, 'error');
+                return; // bulle expirée avant le clic, ignoré silencieusement
             } else if (data.type === 'attacker') {
                 App.toast(`+${data.gained} CPU Cycles (${BUBBLE_LABELS[data.kind] || data.kind})`, 'success');
             } else {
@@ -89,10 +93,13 @@ const Game = (() => {
     }
 
     function resizeCanvas() {
-        if (!canvas) return;
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        if (!canvas || !canvas.parentElement) return;
+        const w = canvas.parentElement.clientWidth;
+        const h = canvas.parentElement.clientHeight;
+        if (w > 0 && h > 0) {
+            canvas.width = w;
+            canvas.height = h;
+        }
     }
 
     // ── Render Loop ─────────────────────────────────────────────
@@ -104,12 +111,6 @@ const Game = (() => {
         })();
     }
 
-    const loadedBubbleIcons = {};
-    const BUBBLE_IMAGES = {
-        'breach': 'img/icons/currency.png',
-        'crypto': 'img/icons/currency.png',
-        'dna': 'img/icons/dna.png'
-    };
 
     function render() {
         if (!state || !ctx) return;
@@ -205,51 +206,25 @@ const Game = (() => {
             ctx.stroke();
             ctx.restore();
 
-            // Texte
-            // Draw image instead of pure text if we have it
-            let imgData = loadedBubbleIcons[bubble.kind];
-            if (!imgData) {
-                const img = new Image();
-                img.src = BUBBLE_IMAGES[bubble.kind] || BUBBLE_IMAGES.breach;
-                loadedBubbleIcons[bubble.kind] = { image: img, loaded: false };
-                img.onload = () => { loadedBubbleIcons[bubble.kind].loaded = true; };
-                imgData = loadedBubbleIcons[bubble.kind];
-            }
-
-            if (imgData && imgData.loaded) {
-                // Drop shadow for the image so it stands out
-                ctx.save();
-                ctx.shadowColor = '#000';
-                ctx.shadowBlur = 4;
-                // Draw image centered in bubble
-                const imgSize = 24; // User requested aggrandir
-                ctx.drawImage(imgData.image, x - imgSize/2, y - imgSize/2 - 2, imgSize, imgSize);
-                ctx.restore();
-
-                // Draw value below
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                // Move text slightly down
-                ctx.fillText(`+${bubble.value}`, x, y + 10);
-            } else {
-                // Fallback to text
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`+${bubble.value}`, x, y);
-            }
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`+${bubble.value}`, x, y);
         });
     }
 
     // ── Interactivité ───────────────────────────────────────────
     function getScaledPos(e) {
         const rect = canvas.getBoundingClientRect();
+        // Ratio entre taille CSS affichée et taille intrinsèque (évite décalage si déviation DPI)
+        const csW = rect.width  || canvas.width;
+        const csH = rect.height || canvas.height;
+        const pixRatioX = canvas.width  / csW;
+        const pixRatioY = canvas.height / csH;
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
+            x: (e.clientX - rect.left) * pixRatioX,
+            y: (e.clientY - rect.top)  * pixRatioY,
             scaleX: (canvas.width / 900) * zoom,
             scaleY: (canvas.height / 700) * zoom,
         };
@@ -300,6 +275,8 @@ const Game = (() => {
             const bx = b.x * scaleX + offsetX;
             const by = b.y * scaleY + offsetY;
             if (Math.hypot(x - bx, y - by) < 26) {
+                // Suppression optimiste : la bulle disparait immédiatement sans attendre le tick
+                state.bubbles = state.bubbles.filter(b2 => b2.id !== b.id);
                 WS.send('click_bubble', { bubble_id: b.id });
                 return;
             }

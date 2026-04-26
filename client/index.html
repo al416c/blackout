@@ -92,7 +92,8 @@
             <div class="menu-buttons">
                 <button id="btn-start-game" class="btn btn-primary btn-large">Lancer la partie</button>
                 <button id="btn-leaderboard" class="btn btn-secondary">Classement</button>
-                <button id="btn-logout" class="btn btn-ghost">Déconnexion</button>
+                <button id="btn-rules" class="btn btn-secondary">Regles</button>
+                <button id="btn-logout" class="btn btn-ghost">Deconnexion</button>
             </div>
         </div>
     </div>
@@ -160,7 +161,8 @@
             <!-- Panneau latéral upgrades -->
             <div id="upgrade-panel" class="side-panel">
                 <button id="toggle-upgrades" class="btn-toggle">◀</button>
-                <h3 class="panel-title">Évolution</h3>
+                <h3 class="panel-title">Evolution</h3>
+                <div id="upgrade-stats-panel" class="upgrade-stats"></div>
                 <div id="upgrade-tree"></div>
             </div>
         </div>
@@ -200,6 +202,49 @@
                 <span class="dot dot-quarantined"></span>
                 <span>Quarantaine: <strong id="info-quarantined">0</strong></span>
             </div>
+        </div>
+    </div>
+
+    <!-- ── Modal Règles ──────────────────────────────────────────── -->
+    <div id="rules-modal" class="overlay hidden">
+        <div class="overlay-content rules-content">
+            <h2>Regles du jeu</h2>
+            <div class="rules-body">
+                <section class="rules-section">
+                    <h3>Objectif</h3>
+                    <p>Infecter la totalite des noeuds du reseau avant que la Blue Team ne detecte et n'eradique votre malware.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>Barre de mefiance</h3>
+                    <p>Chaque machine infectee genere du bruit reseau. Plus vous avez de noeuds infectes, plus la mefiance monte vite. A 100%, la Blue Team deploie un patch et commence a nettoyer le reseau — la partie devient tres difficile a gagner.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>CPU Cycles</h3>
+                    <p>Monnaie du jeu. Gagnez des CPU Cycles en infectant des noeuds chaque tick et en cliquant sur les bulles rouges/oranges. Utilisez-les pour acheter des ameliorations dans le panneau de droite.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>Bulles</h3>
+                    <p><strong>Rouge (Breche) / Orange (Exfiltration)</strong> — cliquez dessus pour gagner des CPU Cycles.<br>
+                    <strong>Bleu (Analyse Logs) / Vert (Patch)</strong> — bulles de la Blue Team, les cliquer augmente votre mefiance.</p>
+                    <p>Les bulles disparaissent apres quelques ticks, il faut etre rapide.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>Classes de malware</h3>
+                    <p><strong>Worm</strong> — propagation rapide, bruit eleve. Agressif mais detecte vite.<br>
+                    <strong>Trojan</strong> — discret, contourne les defenses, revenus corrects.<br>
+                    <strong>Ransomware</strong> — revenus massifs, detection tres rapide. Mode defi.<br>
+                    <strong>Rootkit</strong> — quasi-invisible, propagation lente. Mode patience.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>Evenements Blue Team</h3>
+                    <p>A partir de 30% de mefiance, la Blue Team reagit : honeypots, quarantaines, patches, reductions de propagation. Restez en dessous de 50% le plus longtemps possible.</p>
+                </section>
+                <section class="rules-section">
+                    <h3>Terminal</h3>
+                    <p>Entrez des commandes hacking dans le terminal pour gagner des bonus. Chaque classe a ses propres commandes. Tapez <code>help</code> pour la liste complete.</p>
+                </section>
+            </div>
+            <button id="btn-close-rules" class="btn btn-primary">Fermer</button>
         </div>
     </div>
 

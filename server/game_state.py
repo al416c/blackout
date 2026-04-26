@@ -85,6 +85,15 @@ class GameState:
     bubbles: list[Bubble] = field(default_factory=list)
     next_bubble_id: int = 1
 
+    # IDs des événements Blue Team déjà déclenchés (effets one-shot)
+    triggered_events: list[int] = field(default_factory=list)
+    # Tick du dernier événement de quarantaine (cooldown)
+    quarantine_last_tick: int = 0
+    # Ticks restants avant de pouvoir réutiliser le hack spécial
+    special_cooldown: int = 0
+    # Cooldowns des commandes terminal (clé → ticks restants)
+    command_cooldowns: dict = field(default_factory=dict)
+
     # Résultat
     result: Optional[str] = None   # "victory" | "defeat"
     score: int = 0
@@ -118,6 +127,7 @@ class GameState:
             "patch_deployed": self.patch_deployed,
             "purchased_upgrades": self.purchased_upgrades,
             "bubbles": [b.to_dict() for b in self.bubbles],
+            "special_cooldown": self.special_cooldown,
             "result": self.result,
             "score": self.score,
         }
