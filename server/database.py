@@ -77,11 +77,20 @@ def init_db():
         )
     """)
 
+    # ── Table config ─────────────────────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS config (
+            key         TEXT PRIMARY KEY,
+            value       TEXT NOT NULL,
+            description TEXT
+        )
+    """)
+
     conn.commit()
 
     # Seed / reseed upgrade data si le nombre d'entrées a changé
     count_up = cur.execute("SELECT COUNT(*) FROM upgrade").fetchone()[0]
-    if count_up < 30:
+    if count_up < 33:  # force reseed si les données ont changé
         cur.execute("DELETE FROM upgrade")
         _seed_upgrades(cur)
         conn.commit()
@@ -91,197 +100,204 @@ def init_db():
         _seed_blueteam(cur)
         conn.commit()
 
+    # Seed config data if empty
+    if cur.execute("SELECT COUNT(*) FROM config").fetchone()[0] == 0:
+        _seed_config(cur)
+        conn.commit()
+
     conn.close()
 
 
 # ── Seed data ────────────────────────────────────────────────────────
 
 def _seed_upgrades(cur: sqlite3.Cursor):
+    # Coûts réduits de ~25% par rapport à l'ancienne version (économie plus tendue avec revenu x0.15)
+    # passive_income réduit de ~60% pour rester équilibré face au faible taux de revenu passif
     upgrades = [
         # ════════════════════════════════════════════════════════════
-        # WORM (🐛 Aggro — Propagation rapide, bruit élevé)
+        # WORM — Propagation rapide, bruit élevé
         # ════════════════════════════════════════════════════════════
 
         # ── Transmission ──
-        ("Scan réseau massif", "transmission", 1, 80,
+        ("Scan réseau massif", "transmission", 1, 60,
          {"propagation_bonus": 0.08, "allowed_malware": ["worm"]},
          -0.05,
          "Le ver scanne agressivement les sous-réseaux à la recherche d'hôtes vulnérables."),
 
-        ("Exploitation SMB", "transmission", 2, 160,
+        ("Exploitation SMB", "transmission", 2, 120,
          {"propagation_bonus": 0.12, "allowed_malware": ["worm"]},
          -0.08,
          "Utilise des failles de partage réseau SMB (type EternalBlue) pour se répliquer latéralement."),
 
-        ("Exploit Zero-Day", "transmission", 3, 300,
+        ("Exploit Zero-Day", "transmission", 3, 225,
          {"propagation_bonus": 0.20, "allowed_malware": ["worm"]},
          -0.12,
          "Exploite une vulnérabilité non patchée pour une propagation sans restriction."),
 
         # ── Symptômes ──
-        ("Cryptomineur distribué", "symptomes", 1, 100,
-         {"passive_income": 5, "allowed_malware": ["worm"]},
+        ("Cryptomineur distribué", "symptomes", 1, 75,
+         {"passive_income": 2, "allowed_malware": ["worm"]},
          -0.10,
          "Détourne le CPU des machines infectées pour miner de la cryptomonnaie."),
 
-        ("Botnet DDoS", "symptomes", 2, 220,
-         {"passive_income": 10, "allowed_malware": ["worm"]},
+        ("Botnet DDoS", "symptomes", 2, 165,
+         {"passive_income": 4, "allowed_malware": ["worm"]},
          -0.15,
          "Transforme les machines en réseau de bots pour lancer des attaques DDoS lucratives."),
 
-        ("Exfiltration massive", "symptomes", 3, 350,
-         {"income_bonus": 0.20, "allowed_malware": ["worm"]},
+        ("Exfiltration massive", "symptomes", 3, 260,
+         {"income_bonus": 0.15, "allowed_malware": ["worm"]},
          -0.20,
          "Vole et revend les données sensibles de toutes les machines compromises."),
 
         # ── Capacités ──
-        ("Payload polymorphe", "capacites", 1, 120,
+        ("Payload polymorphe", "capacites", 1, 90,
          {"stealth": 0.15, "allowed_malware": ["worm"]},
          0.15,
          "Le ver change de signature binaire à chaque réplication, échappant aux antivirus."),
 
-        ("Communication P2P", "capacites", 2, 250,
+        ("Communication P2P", "capacites", 2, 185,
          {"stealth": 0.10, "propagation_bonus": 0.05, "allowed_malware": ["worm"]},
          0.10,
          "Les instances communiquent en peer-to-peer, rendant le réseau C2 résilient et décentralisé."),
 
         # ════════════════════════════════════════════════════════════
-        # TROJAN (🐴 Infiltration — Discret, contourne les défenses)
+        # TROJAN — Discret, contourne les défenses
         # ════════════════════════════════════════════════════════════
 
         # ── Transmission ──
-        ("Pièce jointe piégée", "transmission", 1, 100,
+        ("Pièce jointe piégée", "transmission", 1, 75,
          {"propagation_bonus": 0.06, "stealth": 0.08, "allowed_malware": ["trojan"]},
          0.08,
          "Documents Office contenant une macro malveillante signée, difficile à détecter."),
 
-        ("Mouvement latéral RDP", "transmission", 2, 200,
+        ("Mouvement latéral RDP", "transmission", 2, 150,
          {"propagation_bonus": 0.10, "allowed_malware": ["trojan"]},
          -0.05,
          "Utilise des identifiants RDP compromis pour pivoter silencieusement entre les machines."),
 
-        ("Watering Hole", "transmission", 3, 320,
+        ("Watering Hole", "transmission", 3, 240,
          {"propagation_bonus": 0.14, "stealth": 0.05, "allowed_malware": ["trojan"]},
          0.05,
          "Compromet un site web légitime fréquenté par les cibles pour les infecter à leur insu."),
 
         # ── Symptômes ──
-        ("Keylogger furtif", "symptomes", 1, 130,
-         {"income_bonus": 0.08, "stealth": 0.05, "allowed_malware": ["trojan"]},
+        ("Keylogger furtif", "symptomes", 1, 100,
+         {"income_bonus": 0.06, "stealth": 0.05, "allowed_malware": ["trojan"]},
          0.05,
          "Enregistre les frappes clavier en temps réel sans déclencher la moindre alerte."),
 
-        ("Exfiltration DNS", "symptomes", 2, 240,
-         {"passive_income": 8, "stealth": 0.10, "allowed_malware": ["trojan"]},
+        ("Exfiltration DNS", "symptomes", 2, 180,
+         {"passive_income": 3, "stealth": 0.10, "allowed_malware": ["trojan"]},
          0.10,
          "Exfiltre les données via des requêtes DNS encodées, quasi indétectable par les pare-feux."),
 
-        ("Vol de credentials", "symptomes", 3, 360,
-         {"income_bonus": 0.15, "allowed_malware": ["trojan"]},
+        ("Vol de credentials", "symptomes", 3, 270,
+         {"income_bonus": 0.10, "allowed_malware": ["trojan"]},
          -0.05,
          "Extraction massive des mots de passe stockés dans les navigateurs et gestionnaires."),
 
         # ── Capacités ──
-        ("Certificat SSL volé", "capacites", 1, 150,
+        ("Certificat SSL volé", "capacites", 1, 110,
          {"stealth": 0.20, "allowed_malware": ["trojan"]},
          0.20,
          "Signe le binaire du trojan avec un certificat numérique légitime volé."),
 
-        ("Backdoor persistante", "capacites", 2, 280,
+        ("Backdoor persistante", "capacites", 2, 210,
          {"stealth": 0.15, "propagation_bonus": 0.03, "allowed_malware": ["trojan"]},
          0.15,
          "Installe un accès distant persistant survivant aux redémarrages et mises à jour."),
 
         # ════════════════════════════════════════════════════════════
-        # RANSOMWARE (💰 Force Brute — Revenus massifs, détection rapide)
+        # RANSOMWARE — Revenus massifs, détection rapide
         # ════════════════════════════════════════════════════════════
 
         # ── Transmission ──
-        ("Propagation ver-ransom", "transmission", 1, 130,
+        ("Propagation ver-ransom", "transmission", 1, 100,
          {"propagation_bonus": 0.12, "allowed_malware": ["ransomware"]},
          -0.15,
          "Combine techniques de ver et chiffrement pour se propager et verrouiller rapidement."),
 
-        ("Exploitation EternalBlue", "transmission", 2, 250,
+        ("Exploitation EternalBlue", "transmission", 2, 185,
          {"propagation_bonus": 0.18, "allowed_malware": ["ransomware"]},
          -0.20,
          "Utilise la faille NSA EternalBlue pour envahir tout le réseau en quelques ticks."),
 
-        ("Phishing ciblé", "transmission", 3, 350,
+        ("Phishing ciblé", "transmission", 3, 260,
          {"propagation_bonus": 0.15, "stealth": 0.05, "allowed_malware": ["ransomware"]},
          0.05,
          "Campagne de spear-phishing ultra ciblée avec des leurres personnalisés."),
 
         # ── Symptômes ──
-        ("Chiffrement partiel", "symptomes", 1, 100,
-         {"passive_income": 6, "allowed_malware": ["ransomware"]},
+        ("Chiffrement partiel", "symptomes", 1, 75,
+         {"passive_income": 2, "allowed_malware": ["ransomware"]},
          -0.08,
          "Chiffre partiellement les fichiers pour commencer l'extorsion rapidement."),
 
-        ("Chiffrement AES-256", "symptomes", 2, 220,
-         {"income_bonus": 0.20, "allowed_malware": ["ransomware"]},
+        ("Chiffrement AES-256", "symptomes", 2, 165,
+         {"income_bonus": 0.12, "allowed_malware": ["ransomware"]},
          -0.15,
          "Chiffrement militaire rendant les données irrécupérables sans la clé."),
 
-        ("Double extorsion", "symptomes", 3, 380,
-         {"passive_income": 15, "allowed_malware": ["ransomware"]},
+        ("Double extorsion", "symptomes", 3, 285,
+         {"passive_income": 6, "allowed_malware": ["ransomware"]},
          -0.25,
          "Menace de publier les données volées en plus du chiffrement — pression maximale."),
 
         # ── Capacités ──
-        ("Obfuscation du binaire", "capacites", 1, 160,
+        ("Obfuscation du binaire", "capacites", 1, 120,
          {"stealth": 0.15, "allowed_malware": ["ransomware"]},
          0.15,
          "Techniques de packing et d'obfuscation rendant l'analyse statique difficile."),
 
-        ("Canal C2 via Tor", "capacites", 2, 300,
+        ("Canal C2 via Tor", "capacites", 2, 225,
          {"stealth": 0.25, "allowed_malware": ["ransomware"]},
          0.25,
          "Communications via le réseau Tor pour masquer totalement l'infrastructure de commande."),
 
         # ════════════════════════════════════════════════════════════
-        # ROOTKIT (👻 Furtivité — Quasi-invisible, propagation lente)
+        # ROOTKIT — Quasi-invisible, propagation lente
         # ════════════════════════════════════════════════════════════
 
         # ── Transmission ──
-        ("Dropper furtif", "transmission", 1, 120,
+        ("Dropper furtif", "transmission", 1, 90,
          {"propagation_bonus": 0.05, "stealth": 0.10, "allowed_malware": ["rootkit"]},
          0.10,
          "Charge utile cachée dans des binaires système légitimes."),
 
-        ("Infection bootloader", "transmission", 2, 240,
+        ("Infection bootloader", "transmission", 2, 180,
          {"propagation_bonus": 0.08, "stealth": 0.15, "allowed_malware": ["rootkit"]},
          0.15,
          "S'installe dans le MBR/UEFI, survivant aux reformatages complets du disque."),
 
-        ("Supply chain injection", "transmission", 3, 380,
+        ("Supply chain injection", "transmission", 3, 285,
          {"propagation_bonus": 0.10, "stealth": 0.10, "allowed_malware": ["rootkit"]},
          0.10,
          "Compromet la chaîne d'approvisionnement logicielle pour une infection à la source."),
 
         # ── Symptômes ──
-        ("Keylogger noyau", "symptomes", 1, 140,
-         {"income_bonus": 0.06, "stealth": 0.10, "allowed_malware": ["rootkit"]},
+        ("Keylogger noyau", "symptomes", 1, 105,
+         {"income_bonus": 0.04, "stealth": 0.10, "allowed_malware": ["rootkit"]},
          0.10,
          "Intercepte les frappes au niveau kernel, totalement transparent pour l'utilisateur."),
 
-        ("Capture mémoire", "symptomes", 2, 260,
-         {"passive_income": 7, "stealth": 0.05, "allowed_malware": ["rootkit"]},
+        ("Capture mémoire", "symptomes", 2, 195,
+         {"passive_income": 3, "stealth": 0.05, "allowed_malware": ["rootkit"]},
          0.05,
          "Lit la mémoire vive pour extraire mots de passe, clés de chiffrement et tokens."),
 
-        ("Proxy SOCKS caché", "symptomes", 3, 350,
-         {"passive_income": 12, "allowed_malware": ["rootkit"]},
+        ("Proxy SOCKS caché", "symptomes", 3, 260,
+         {"passive_income": 5, "allowed_malware": ["rootkit"]},
          0.00,
          "Transforme la machine en proxy anonyme revendu sur le dark web."),
 
         # ── Capacités ──
-        ("Hooking système", "capacites", 1, 160,
+        ("Hooking système", "capacites", 1, 120,
          {"stealth": 0.25, "allowed_malware": ["rootkit"]},
          0.25,
          "Intercepte et modifie les appels système pour cacher toute trace du rootkit."),
 
-        ("Mode fantôme", "capacites", 2, 320,
+        ("Mode fantôme", "capacites", 2, 240,
          {"stealth": 0.35, "allowed_malware": ["rootkit"]},
          0.35,
          "Le rootkit devient quasi invisible à tout outil de détection — furtivité maximale."),
@@ -290,6 +306,30 @@ def _seed_upgrades(cur: sqlite3.Cursor):
         cur.execute(
             "INSERT INTO upgrade (name, branch, tier, cost, effect_json, stealth_mod, description) VALUES (?,?,?,?,?,?,?)",
             (name, branch, tier, cost, json.dumps(effect), stealth, desc),
+        )
+
+
+def _seed_config(cur: sqlite3.Cursor):
+    defaults = [
+        ("suspicion_base_factor", "0.12",
+         "Facteur de base pour l'augmentation de mefiance par tick"),
+        ("tick_interval_seconds", "1.5",
+         "Intervalle entre chaque tick de jeu en secondes"),
+        ("initial_cpu_cycles", "50",
+         "CPU cycles de depart pour une nouvelle partie"),
+        ("clean_rate_post_patch", "0.18",
+         "Taux de nettoyage par tick apres deploiement du patch"),
+        ("bubble_ttl", "6",
+         "Duree de vie des bulles cliquables en ticks"),
+        ("bubble_spawn_chance", "0.25",
+         "Probabilite de spawner une bulle attaquant par tick"),
+        ("max_nodes", "30",
+         "Nombre de noeuds dans le reseau"),
+    ]
+    for key, value, desc in defaults:
+        cur.execute(
+            "INSERT OR IGNORE INTO config (key, value, description) VALUES (?,?,?)",
+            (key, value, desc),
         )
 
 
@@ -416,3 +456,39 @@ def end_party(party_id: int, result: str, score: int):
     )
     conn.commit()
     conn.close()
+
+
+# ── CRUD config ──────────────────────────────────────────────────────
+
+def get_all_config() -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM config ORDER BY key").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_config(key: str) -> str | None:
+    conn = get_connection()
+    row = conn.execute("SELECT value FROM config WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else None
+
+
+def set_config(key: str, value: str, description: str = "") -> None:
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO config (key, value, description) VALUES (?, ?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value, description),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_config(key: str) -> bool:
+    conn = get_connection()
+    cur = conn.execute("DELETE FROM config WHERE key = ?", (key,))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted

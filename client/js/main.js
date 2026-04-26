@@ -52,6 +52,14 @@ const App = (() => {
             document.getElementById('game-over-overlay').classList.add('hidden');
             showScreen('menu');
         });
+
+        // Modal Règles
+        document.getElementById('btn-rules').addEventListener('click', () => {
+            document.getElementById('rules-modal').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-rules').addEventListener('click', () => {
+            document.getElementById('rules-modal').classList.add('hidden');
+        });
     }
 
     function showScreen(name) {

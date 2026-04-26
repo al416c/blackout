@@ -6,11 +6,20 @@ const Upgrades = (() => {
     let allUpgrades = [];
     let purchasedIds = [];
 
-    const BRANCH_NAMES = {
-        transmission: '<img src="img/icons/transmission.png" class="branch-icon" alt=""> Transmission',
-        symptomes: '<img src="img/icons/symptoms.png" class="branch-icon" alt=""> Symptômes',
-        capacites: '<img src="img/icons/capacities.png" class="branch-icon" alt=""> Capacités',
+    const BRANCH_LABELS = {
+        transmission: 'Transmission',
+        symptomes: 'Symptomes',
+        capacites: 'Capacites',
     };
+
+    // Couleurs des branches
+    const BRANCH_COLORS = {
+        transmission: 'var(--red)',
+        symptomes:    'var(--orange)',
+        capacites:    'var(--blue)',
+    };
+
+    let currentStats = null;
 
     function init() {
         WS.on('upgrades_list', (data) => {
@@ -43,6 +52,27 @@ const Upgrades = (() => {
         render();
     }
 
+    function updateStats(state) {
+        currentStats = state;
+        renderStatsPanel(state);
+    }
+
+    function renderStatsPanel(state) {
+        let panel = document.getElementById('upgrade-stats-panel');
+        if (!panel) return;
+        if (!state) { panel.innerHTML = ''; return; }
+        const cd = state.special_cooldown || 0;
+        const hackStatus = cd > 0
+            ? `<span class="stat-val stat-cd">hack : recharge (${cd})</span>`
+            : `<span class="stat-val stat-ready">hack : PRET</span>`;
+        panel.innerHTML = `
+            <div class="stat-row"><span class="stat-key">Propagation</span><span class="stat-val">x${(1 + (state.propagation_mod||0)).toFixed(2)}</span></div>
+            <div class="stat-row"><span class="stat-key">Furtivite</span><span class="stat-val">${Math.round((state.stealth_mod||0)*100)}%</span></div>
+            <div class="stat-row"><span class="stat-key">Revenu</span><span class="stat-val">x${(1 + (state.income_mod||0)).toFixed(2)}</span></div>
+            <div class="stat-row">${hackStatus}</div>
+        `;
+    }
+
     function render() {
         const container = document.getElementById('upgrade-tree');
         container.innerHTML = '';
@@ -59,12 +89,21 @@ const Upgrades = (() => {
 
             const title = document.createElement('div');
             title.className = 'upgrade-branch-title';
-            title.innerHTML = BRANCH_NAMES[branch] || branch;
+            title.style.color = BRANCH_COLORS[branch] || 'var(--accent)';
+            title.textContent = BRANCH_LABELS[branch] || branch;
             div.appendChild(title);
 
             upgrades.sort((a, b) => a.tier - b.tier);
 
-            upgrades.forEach(u => {
+            upgrades.forEach((u, idx) => {
+                // Connecteur entre tiers (sauf avant le premier)
+                if (idx > 0) {
+                    const connector = document.createElement('div');
+                    const prevPurchased = purchasedIds.includes(upgrades[idx - 1].id);
+                    connector.className = 'upgrade-connector' + (prevPurchased ? ' active' : '');
+                    div.appendChild(connector);
+                }
+
                 const item = document.createElement('div');
                 item.className = 'upgrade-item';
 
@@ -77,9 +116,11 @@ const Upgrades = (() => {
                 if (purchased) item.classList.add('purchased');
                 if (locked) item.classList.add('locked');
 
+                const tierLabel = `<span class="upgrade-tier">N${u.tier}</span>`;
                 item.innerHTML = `
+                    ${tierLabel}
                     <span class="upgrade-name">${u.name}</span>
-                    <span class="upgrade-cost">${purchased ? '✓' : u.cost + ' <img src="img/icons/currency.png" class="currency-icon" alt="⚡">'}</span>
+                    <span class="upgrade-cost">${purchased ? 'OK' : u.cost + ' CPU'}</span>
                 `;
                 item.title = u.description || '';
 
@@ -96,5 +137,5 @@ const Upgrades = (() => {
         }
     }
 
-    return { init, loadUpgrades, updatePurchased };
+    return { init, loadUpgrades, updatePurchased, updateStats };
 })();
