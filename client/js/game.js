@@ -111,6 +111,7 @@ const Game = (() => {
             state = data.state;
             Upgrades.updatePurchased(state.purchased_upgrades);
             updateHUD();
+            _updateBlueBudget();
         });
 
         WS.on('game_over', data => showGameOver(data.result, data.score));
@@ -219,6 +220,24 @@ const Game = (() => {
             }
         });
 
+        // Scan highlight: ring around detected infected nodes
+        if (scannedHighlight.length > 0) {
+            scannedHighlight.forEach(nid => {
+                const node = state.nodes[nid];
+                if (!node) return;
+                const x = node.x * s + offsetX, y = node.y * s + offsetY;
+                ctx.save();
+                ctx.strokeStyle = '#00f2ff';
+                ctx.lineWidth = 2 * s;
+                ctx.shadowColor = '#00f2ff';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(x, y, 20 * s, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
         // Bubbles
         (state.bubbles || []).forEach(b => {
             const x = b.x * s + offsetX, y = b.y * s + offsetY;
@@ -303,18 +322,24 @@ const Game = (() => {
         offsetY = e.clientY - rect.top - (e.clientY - rect.top - offsetY) * (zoom / prevZoom);
     }
 
-    function onMouseDown(e) { 
-        if (!state) return; 
-        
-        // Handle bubble click
+    function onMouseDown(e) {
+        if (!state) return;
+
         if (hoveredBubble) {
             WS.send('click_bubble', { bubble_id: hoveredBubble.id });
             return;
         }
 
-        isPanning = true; 
-        lastPanX = e.clientX; 
-        lastPanY = e.clientY; 
+        // Blue Team: clic sur noeud pour une action en attente
+        if (hoveredNode && App.getPendingBlueAction()) {
+            WS.send('blue_action', { action: App.getPendingBlueAction(), node_id: hoveredNode.id });
+            App.clearPendingBlueAction();
+            return;
+        }
+
+        isPanning = true;
+        lastPanX = e.clientX;
+        lastPanY = e.clientY;
     }
     function onMouseUp() { isPanning = false; }
 
@@ -328,37 +353,52 @@ const Game = (() => {
     function updateHUD() {
         if (!state) return;
 
-        // CPU
+        const role = (typeof App !== 'undefined') ? App.getRole() : 'red';
         const cpuEl = document.getElementById('hud-cpu');
-        if (cpuEl) cpuEl.textContent = Math.floor(state.cpu_cycles).toLocaleString();
+        if (cpuEl) {
+            const val = role === 'blue' ? state.it_budget : state.cpu_cycles;
+            cpuEl.textContent = Math.floor(val).toLocaleString();
+        }
 
-        // Suspicion
         const pct = Math.min(100, Math.max(0, state.suspicion));
         const text = document.getElementById('suspicion-text');
         if (text) text.textContent = Math.floor(pct) + '%';
 
-        // Segments de détection (Barre massive)
         const segments = document.querySelectorAll('#detection-segments .segment');
         if (segments.length > 0) {
             const activeCount = Math.floor((pct / 100) * segments.length);
             segments.forEach((seg, idx) => {
-                if (idx < activeCount) {
-                    seg.classList.add('active');
-                } else {
-                    seg.classList.remove('active');
-                }
+                seg.classList.toggle('active', idx < activeCount);
             });
         }
+    }
+
+    let scannedHighlight = [];
+    let scannedTimer = null;
+
+    function highlightScanned(nodeIds) {
+        scannedHighlight = nodeIds;
+        if (scannedTimer) clearTimeout(scannedTimer);
+        scannedTimer = setTimeout(() => { scannedHighlight = []; }, 3000);
+    }
+
+    function _updateBlueBudget() {
+        if (!state) return;
+        const el = document.getElementById('blue-budget-display');
+        if (el) el.textContent = Math.floor(state.it_budget) + ' IT';
     }
 
     function showGameOver(result, score) {
         const overlay = document.getElementById('game-over-overlay');
         const title = document.getElementById('game-over-title');
-        title.textContent = result === 'victory' ? '🏆 VICTOIRE' : '💀 DÉFAITE';
+        title.textContent = result === 'victory' ? 'VICTOIRE' : 'DEFAITE';
         title.style.color = result === 'victory' ? '#00ff99' : '#ff0055';
         document.getElementById('game-over-score').textContent = score;
         overlay.classList.remove('hidden');
     }
 
-    return { init, getState: () => state };
+    // Highlight scan results: draw a ring around detected nodes for 3s
+    const _origRender = render;
+
+    return { init, getState: () => state, highlightScanned };
 })();

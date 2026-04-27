@@ -757,6 +757,9 @@ body:has(#menu-screen.active) {
 .malware-card p { color: #555 !important; }
 .malware-card h4 { color: #000 !important; }
 .difficulty-options label { color: #000 !important; }
+.game-mode-select h3 { color: #333 !important; }
+#menu-screen .btn-secondary { background: #f5f5f5 !important; color: #000 !important; border-color: #ccc !important; }
+#menu-screen .btn-secondary:hover { border-color: #000 !important; }
 
 /* Icon styles */
 .menu-icon, .branch-icon, .currency-icon {
@@ -776,6 +779,142 @@ body:has(#menu-screen.active) {
     width: 64px;
     height: 64px;
     object-fit: contain;
+}
+
+/* ── Mode de jeu (menu) ────────────────────────────────────────── */
+.game-mode-select {
+    margin: 1.5rem 0 0;
+}
+.game-mode-select h3 {
+    margin-bottom: 0.8rem;
+    color: var(--text-dim);
+    font-weight: 400;
+}
+.mode-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ── Room code display ─────────────────────────────────────────── */
+.room-code {
+    font-family: var(--mono);
+    font-size: 2.8rem;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    margin: 1.5rem 0;
+    padding: 1rem 2rem;
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+}
+.waiting-text {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    animation: blink 1.5s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0.3; } }
+
+.overlay-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+.overlay-content input[type="text"] {
+    margin: 0.8rem auto;
+    display: block;
+    text-align: center;
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+    font-family: var(--mono);
+    width: 240px;
+}
+
+/* ── HUD role badge ────────────────────────────────────────────── */
+.role-badge {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.7rem;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+}
+.role-red  { background: rgba(255,34,68,0.2); color: var(--red); border: 1px solid var(--red); }
+.role-blue { background: rgba(0,148,255,0.2); color: #00aaff;    border: 1px solid #00aaff; }
+
+/* ── Blue Team panel ───────────────────────────────────────────── */
+.blue-side-panel {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    width: 200px;
+    background: rgba(10, 10, 20, 0.92);
+    border: 1px solid #00aaff44;
+    border-radius: 10px;
+    padding: 0.8rem;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+.blue-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #00aaff33;
+}
+.blue-panel-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #00aaff;
+}
+.blue-budget {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #00f2ff;
+}
+.blue-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.blue-action-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 170, 255, 0.06);
+    border: 1px solid #00aaff33;
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    width: 100%;
+}
+.blue-action-btn:hover {
+    border-color: #00aaff;
+    background: rgba(0, 170, 255, 0.14);
+}
+.blue-action-btn.active {
+    border-color: #00f2ff;
+    background: rgba(0, 242, 255, 0.15);
+    color: #00f2ff;
+}
+.action-name { font-weight: 600; }
+.action-cost { font-family: var(--mono); font-size: 0.75rem; color: #00aaff; }
+.blue-hint {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: #00f2ff;
+    text-align: center;
+    animation: blink 1s step-end infinite;
 }
 
 /* ── Modal Règles ──────────────────────────────────────────────── */

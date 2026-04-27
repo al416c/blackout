@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start *)",
+      "Bash(python -c \"import server.game_state; import server.game_engine; import server.blue_team_ai; import server.main; print\\('OK'\\)\")",
+      "Bash(Start-Sleep -Seconds 1)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\remon\\\\OneDrive\\\\Dokumente\\\\Cours\\\\projet_pierre\\\\blackout\"; Start-Process python -ArgumentList \"-m\",\"server.main\" -WindowStyle Hidden; Start-Sleep -Seconds 2; \\(Invoke-WebRequest -Uri \"http://localhost:8765/\" -UseBasicParsing\\).StatusCode)",
+      "Bash(node --check \"C:\\\\Users\\\\remon\\\\OneDrive\\\\Dokumente\\\\Cours\\\\projet_pierre\\\\blackout\\\\client\\\\js\\\\main.js\")",
+      "Bash(node --check \"C:\\\\Users\\\\remon\\\\OneDrive\\\\Dokumente\\\\Cours\\\\projet_pierre\\\\blackout\\\\client\\\\js\\\\game.js\")",
+      "PowerShell(Start-Process \"http://localhost:8765/\")"
+    ]
+  }
+}

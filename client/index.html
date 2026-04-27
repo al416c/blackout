@@ -101,8 +101,16 @@
                 </div>
             </div>
 
+            <div class="game-mode-select">
+                <h3>Mode de jeu</h3>
+                <div class="mode-buttons">
+                    <button id="btn-solo-ai" class="btn btn-primary btn-large">Solo vs IA</button>
+                    <button id="btn-create-room" class="btn btn-secondary btn-large">Creer partie duo</button>
+                    <button id="btn-join-room" class="btn btn-secondary btn-large">Rejoindre partie duo</button>
+                </div>
+            </div>
+
             <div class="menu-buttons">
-                <button id="btn-start-game" class="btn btn-primary btn-large">Lancer la partie</button>
                 <button id="btn-leaderboard" class="btn btn-secondary">Classement</button>
                 <button id="btn-rules" class="btn btn-secondary">Regles</button>
                 <button id="btn-logout" class="btn btn-ghost">Deconnexion</button>
@@ -154,20 +162,48 @@
             </div>
 
             <div class="stat-group align-right">
-                <span class="stat-label">CPU Cycles</span>
+                <span id="hud-resource-label" class="stat-label">CPU Cycles</span>
                 <span id="hud-cpu" class="stat-value">0</span>
             </div>
+            <div id="hud-role-badge" class="role-badge role-red hidden">RED TEAM</div>
         </div>
 
         <!-- Zone de jeu (canvas réseau) -->
         <div id="game-area">
             <canvas id="network-canvas"></canvas>
-            
+
             <!-- Metadata overlay -->
             <div class="map-metadata">
                 SYSTEM_STATE: STABLE<br>
                 ENCRYPTION: ACTIVE<br>
                 LINK: BLACKOUT_NETWORK
+            </div>
+
+            <!-- Panneau Blue Team (visible uniquement pour le role blue) -->
+            <div id="blue-panel" class="blue-side-panel hidden">
+                <div class="blue-panel-header">
+                    <span class="blue-panel-title">BLUE TEAM</span>
+                    <span id="blue-budget-display" class="blue-budget">50 IT</span>
+                </div>
+                <div class="blue-actions">
+                    <button id="btn-scan" class="blue-action-btn" data-action="scan" data-cost="15">
+                        <span class="action-name">Scan reseau</span>
+                        <span class="action-cost">15 IT</span>
+                    </button>
+                    <button id="btn-honeypot" class="blue-action-btn" data-action="honeypot" data-cost="30">
+                        <span class="action-name">Honeypot</span>
+                        <span class="action-cost">30 IT</span>
+                    </button>
+                    <button id="btn-quarantine" class="blue-action-btn" data-action="quarantine" data-cost="20">
+                        <span class="action-name">Quarantaine</span>
+                        <span class="action-cost">20 IT</span>
+                    </button>
+                    <button id="btn-patch" class="blue-action-btn" data-action="patch" data-cost="50">
+                        <span class="action-name">Forcer Patch</span>
+                        <span class="action-cost">50 IT</span>
+                    </button>
+                </div>
+                <div id="blue-action-hint" class="blue-hint hidden">Cliquez sur un noeud cible</div>
             </div>
         </div>
 
@@ -189,7 +225,7 @@
             <div class="terminal-log-hint">SYSTEM_LOG // METROPOLIS_GRID_SCAN</div>
             <div id="terminal-input-line">
                 <span class="prompt">></span>
-                <input id="terminal-input" type="text" autocomplete="off" spellcheck="false" />
+                <input id="terminal-input" type="text" autocomplete="off" spellcheck="false"/>
             </div>
         </div>
     </div>
@@ -234,6 +270,31 @@
                 </section>
             </div>
             <button id="btn-close-rules" class="btn btn-primary">Fermer</button>
+        </div>
+    </div>
+
+    <!-- ── Overlay room créée (attente Blue Team) ───────────────── -->
+    <div id="room-overlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2>Partie duo creee</h2>
+            <p>Communiquez ce code a votre adversaire&nbsp;:</p>
+            <div id="room-code-display" class="room-code">------</div>
+            <p class="waiting-text">En attente du joueur Blue Team...</p>
+            <button id="btn-cancel-room" class="btn btn-ghost">Annuler</button>
+        </div>
+    </div>
+
+    <!-- ── Overlay rejoindre une room ────────────────────────────── -->
+    <div id="join-overlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2>Rejoindre une partie</h2>
+            <p>Entrez le code de la salle (6 caracteres)</p>
+            <input type="text" id="join-code-input" placeholder="Ex: A1B2C3" maxlength="6" style="text-transform:uppercase;">
+            <div id="join-error" class="error-msg hidden"></div>
+            <div class="overlay-buttons">
+                <button id="btn-confirm-join" class="btn btn-primary">Rejoindre</button>
+                <button id="btn-cancel-join" class="btn btn-ghost">Annuler</button>
+            </div>
         </div>
     </div>
 
