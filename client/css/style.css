@@ -32,6 +32,16 @@ html, body {
     overflow: hidden;
 }
 
+#bg-particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; 
+    pointer-events: none;
+}
+
 /* ── Screens ───────────────────────────────────────────────────── */
 .screen {
     display: none;
@@ -39,6 +49,7 @@ html, body {
     height: 100%;
     position: absolute;
     top: 0; left: 0;
+    background: transparent !important;
 }
 .screen.active { display: flex; }
 
@@ -46,12 +57,13 @@ html, body {
 #auth-screen {
     justify-content: center;
     align-items: center;
-    background: radial-gradient(ellipse at 50% 30%, #1a0a1e 0%, var(--bg) 70%);
 }
 
 .auth-container {
     width: 400px;
     text-align: center;
+    position: relative;
+    z-index: 200;
 }
 
 .game-title {
@@ -59,7 +71,6 @@ html, body {
     font-weight: 900;
     letter-spacing: 0.15em;
     margin-bottom: 0.2em;
-    text-shadow: 0 0 40px rgba(255, 51, 85, 0.3);
 }
 .accent { color: var(--accent); }
 
@@ -159,13 +170,14 @@ input:focus { border-color: var(--accent); }
 #menu-screen {
     justify-content: center;
     align-items: center;
-    background: radial-gradient(ellipse at 50% 30%, #1a0a1e 0%, var(--bg) 70%);
 }
 
 .menu-container {
     text-align: center;
     max-width: 800px;
     width: 90%;
+    position: relative;
+    z-index: 200;
 }
 
 .malware-select { margin: 2rem 0; }
@@ -254,6 +266,8 @@ input:focus { border-color: var(--accent); }
     width: 90%;
     max-width: 800px;
     text-align: center;
+    position: relative;
+    z-index: 200;
 }
 .leaderboard-container h2 { font-size: 2rem; margin-bottom: 1.5rem; }
 
@@ -632,11 +646,11 @@ body.terminal-resizing {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 100;
+    z-index: 2000;
 }
 .overlay.hidden { display: none; }
 
@@ -696,8 +710,13 @@ body.terminal-resizing {
 }
 /* ── Menu & Auth White OVERRIDE ──────────────────────────────────── */
 
-#auth-screen, #menu-screen {
+body:has(#auth-screen.active), 
+body:has(#menu-screen.active) {
     background: #ffffff !important;
+}
+
+#auth-screen, #menu-screen {
+    background: transparent !important;
     color: #000000 !important;
 }
 #auth-screen .game-title, #menu-screen .game-title {
@@ -761,11 +780,18 @@ body.terminal-resizing {
 
 /* ── Modal Règles ──────────────────────────────────────────────── */
 .rules-content {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    position: relative;
+    z-index: 2100;
     max-width: 680px;
     width: 92%;
     max-height: 85vh;
     overflow-y: auto;
     text-align: left;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
 }
 
 .rules-content h2 {
@@ -807,59 +833,92 @@ body.terminal-resizing {
     font-size: 0.85em;
 }
 
-/* ── Glitch Effects ─────────────────────────────────────────── */
-body::before {
+/* ── Glitch Effects (Grayscale Option B + Localized TV Bursts) ────── */
+body:not(.is-playing):not(.modal-open)::before {
     content: "";
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: -1;
-    background-size: 100% 4px, 3px 100%;
+    /* Scanlines subtiles permanentes */
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 3px);
+    z-index: 10;
     pointer-events: none;
-    opacity: 0.3;
+    opacity: 0.2;
 }
 
-body::after {
+/* Localized Violent Noise Bursts */
+.bg-glitch-overlay::before {
     content: "";
+    position: absolute;
+    width: 200px;
+    height: 150px;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0;
+    pointer-events: none;
+    z-index: 11;
+    animation: noise-burst 6s infinite;
+}
+
+@keyframes noise-burst {
+    0%, 18%, 22%, 48%, 52%, 100% { opacity: 0; transform: scale(1); }
+    19% { opacity: 0.4; top: 10%; left: 70%; transform: scale(1.5, 0.2) skewX(20deg); }
+    21% { opacity: 0.2; top: 12%; left: 68%; transform: scale(1.2, 0.5); }
+    49% { opacity: 0.5; top: 60%; left: 5%; width: 400px; height: 20px; transform: scaleY(4); }
+    51% { opacity: 0.3; top: 58%; left: 8%; transform: scaleY(2); }
+}
+
+/* Aggressive horizontal glitch blocks */
+.bg-glitch-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(138, 79, 255, 0.02);
-    z-index: -2;
-    animation: bg-glitch 8s infinite;
     pointer-events: none;
+    z-index: 5;
+    overflow: hidden;
 }
 
-@keyframes bg-glitch {
-    0% { transform: translate(0); }
-    1% { transform: translate(-5px, 5px); background: rgba(0, 242, 255, 0.05); }
-    2% { transform: translate(0); }
-    45% { transform: translate(0); }
-    46% { transform: translate(5px, -5px); background: rgba(255, 0, 193, 0.05); }
-    47% { transform: translate(0); }
+body.is-playing .bg-glitch-overlay,
+body.modal-open .bg-glitch-overlay {
+    display: none;
+}
+
+.glitch-slice {
+    position: absolute;
+    width: 100%;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.2);
+    left: 0;
+    opacity: 0;
+    animation: glitch-slice-anim 3s infinite step-end;
+}
+
+@keyframes glitch-slice-anim {
+    0%, 80%, 100% { opacity: 0; transform: translateX(0); }
+    81% { opacity: 0.6; transform: translateX(-50px) scaleY(4); height: 10px; background: #000; }
+    82% { opacity: 0.4; transform: translateX(40px) scaleY(0.5); }
+    83% { opacity: 0; }
+    20%, 22% { opacity: 0.5; transform: translateX(30px); height: 1px; }
 }
 
 .glitch {
     position: relative;
-    mix-blend-mode: multiply;
 }
 
 .glitch::before, .glitch::after {
     content: attr(data-text);
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
+    background: white; /* Match screen background */
 }
 
 .glitch::before {
     left: 2px;
-    text-shadow: -2px 0 #ff00c1;
+    text-shadow: -1px 0 #888;
     clip: rect(44px, 450px, 56px, 0);
     animation: glitch-anim 5s infinite linear alternate-reverse;
 }
 
 .glitch::after {
     left: -2px;
-    text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1;
+    text-shadow: 1px 0 #555;
     animation: glitch-anim2 1s infinite linear alternate-reverse;
 }
 

@@ -8,7 +8,15 @@ const Game = (() => {
     let state = null;
     let animFrame = null;
     let hoveredNode = null;
+    let hoveredBubble = null;
     let buildings = []; 
+
+    const BUBBLE_STYLES = {
+        breach:       { color: '#8a4fff', shape: 'diamond', label: 'BRCH' },
+        exfiltration: { color: '#8a4fff', shape: 'circle',  label: 'EXFL' },
+        log_analysis: { color: '#00f2ff', shape: 'circle',  label: 'LOGS' },
+        patch_deploy: { color: '#00f2ff', shape: 'diamond', label: 'PTCH' }
+    };
 
     let zoom = 1.0;
     let offsetX = 0;
@@ -210,19 +218,75 @@ const Game = (() => {
                 ctx.fillText(`ID_0x${node.id.toString(16).toUpperCase()}`, x, y - 18*s);
             }
         });
+
+        // Bubbles
+        (state.bubbles || []).forEach(b => {
+            const x = b.x * s + offsetX, y = b.y * s + offsetY;
+            const r = (b === hoveredBubble ? 22 : 18) * s;
+            const style = BUBBLE_STYLES[b.kind] || BUBBLE_STYLES.breach;
+
+            ctx.save();
+            ctx.shadowColor = style.color; 
+            ctx.shadowBlur = 15 * s;
+            ctx.fillStyle = style.color + '33'; // 20% opacity hex
+            ctx.strokeStyle = style.color;
+            ctx.lineWidth = 2 * s;
+            
+            ctx.beginPath();
+            if (style.shape === 'diamond') {
+                ctx.moveTo(x, y - r);
+                ctx.lineTo(x + r, y);
+                ctx.lineTo(x, y + r);
+                ctx.lineTo(x - r, y);
+                ctx.closePath();
+            } else {
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            // Label text
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${9 * s}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 0;
+            ctx.fillText(style.label, x, y - 2 * s);
+            ctx.font = `${8 * s}px monospace`;
+            ctx.fillText(`+${b.value}`, x, y + 8 * s);
+            
+            ctx.restore();
+        });
     }
 
     function getScaledPos(e) {
         const rect = canvas.getBoundingClientRect();
-        return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height), s: zoom };
+        // Use clientWidth/Height for logical coordinate mapping
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return { 
+            x: (e.clientX - rect.left) * scaleX, 
+            y: (e.clientY - rect.top) * scaleY, 
+            s: zoom 
+        };
     }
 
     function onMouseMove(e) {
         if (!state) return;
         const { x, y, s } = getScaledPos(e);
         hoveredNode = null;
+        hoveredBubble = null;
+
+        // Check bubbles first (increased hit zone to 30)
+        for (const b of (state.bubbles || [])) {
+            if (Math.hypot(x - (b.x * s + offsetX), y - (b.y * s + offsetY)) < 30 * s) {
+                hoveredBubble = b; canvas.style.cursor = 'pointer'; return;
+            }
+        }
+
+        // Check nodes (increased hit zone to 20)
         for (const n of state.nodes) {
-            if (Math.hypot(x - (n.x * s + offsetX), y - (n.y * s + offsetY)) < 15 * s) {
+            if (Math.hypot(x - (n.x * s + offsetX), y - (n.y * s + offsetY)) < 20 * s) {
                 hoveredNode = n; canvas.style.cursor = 'pointer'; return;
             }
         }
@@ -239,7 +303,19 @@ const Game = (() => {
         offsetY = e.clientY - rect.top - (e.clientY - rect.top - offsetY) * (zoom / prevZoom);
     }
 
-    function onMouseDown(e) { if (!state) return; isPanning = true; lastPanX = e.clientX; lastPanY = e.clientY; }
+    function onMouseDown(e) { 
+        if (!state) return; 
+        
+        // Handle bubble click
+        if (hoveredBubble) {
+            WS.send('click_bubble', { bubble_id: hoveredBubble.id });
+            return;
+        }
+
+        isPanning = true; 
+        lastPanX = e.clientX; 
+        lastPanY = e.clientY; 
+    }
     function onMouseUp() { isPanning = false; }
 
     window.addEventListener('mousemove', e => {

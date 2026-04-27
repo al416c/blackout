@@ -14,6 +14,7 @@ const App = (() => {
 
         // Initialiser les modules avec sécurité
         try { Auth.init(); } catch(e) { console.error('Auth.init fail', e); }
+        try { Particles.init(); Particles.start(); } catch(e) { console.error('Particles.init fail', e); }
         try { Leaderboard.init(); } catch(e) { console.error('Leaderboard.init fail', e); }
         try { Upgrades.init(); } catch(e) { console.error('Upgrades.init fail', e); }
         try { Game.init(); } catch(e) { console.error('Game.init fail', e); }
@@ -70,12 +71,14 @@ const App = (() => {
         if (btnRules) {
             btnRules.addEventListener('click', () => {
                 document.getElementById('rules-modal').classList.remove('hidden');
+                document.body.classList.add('modal-open');
             });
         }
         const btnCloseRules = document.getElementById('btn-close-rules');
         if (btnCloseRules) {
             btnCloseRules.addEventListener('click', () => {
                 document.getElementById('rules-modal').classList.add('hidden');
+                document.body.classList.remove('modal-open');
             });
         }
     }
@@ -84,6 +87,15 @@ const App = (() => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = document.getElementById(`${name}-screen`);
         if (screen) screen.classList.add('active');
+
+        // Gérer les particules et le glitch
+        if (name === 'game' || name === 'leaderboard') {
+            Particles.stop();
+            document.body.classList.add('is-playing'); // Réutilisation de la classe pour stopper le glitch
+        } else {
+            Particles.start();
+            document.body.classList.remove('is-playing');
+        }
 
         // Gérer la visibilité du terminal
         const terminal = document.getElementById('terminal-panel');

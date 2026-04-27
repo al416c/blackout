@@ -60,7 +60,7 @@ def process_tick(state: GameState) -> GameState:
     ratio = m_saines / m_totales if m_totales > 0 else 0
 
     # Facteur d'amortissement de la propagation pour un rythme plus stratégique
-    propagation_dampening_factor = 0.6
+    propagation_dampening_factor = 0.25
 
     n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult * propagation_dampening_factor
     # Arrondi probabiliste : évite que round(0.37) = 0 bloque totalement la progression
@@ -84,9 +84,9 @@ def process_tick(state: GameState) -> GameState:
             state.nodes[nid].infected = True
 
     # ── 2. Revenus ───────────────────────────────────────────────
-    # Multiplicateur 0.07 pour des gains de CPU plus lents et stratégiques
+    # Multiplicateur 0.025 pour des gains de CPU plus lents et stratégiques (était 0.07)
     income = profile["income_per_node"]
-    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.07 * income_mult
+    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.025 * income_mult
     state.cpu_cycles += state.passive_income_bonus
 
     # Blue Team budget
@@ -97,8 +97,8 @@ def process_tick(state: GameState) -> GameState:
     stealth_factor = max(0.05, 1.0 - state.stealth_mod)
     b_total = state.infected_count * b_machine * stealth_factor
 
-    # Division par 1.8 du gain de suspicion pour une BlueTeam plus présente (au lieu de 4.0)
-    suspicion_increase = (b_total * 0.12 * suspicion_mult) / 1.8
+    # Division par 3.0 du gain de suspicion pour un meilleur équilibre (était 1.8)
+    suspicion_increase = (b_total * 0.12 * suspicion_mult) / 3.0
     state.suspicion = min(100.0, state.suspicion + suspicion_increase)
 
     # ── 4. Événements Blue Team ──────────────────────────────────
@@ -173,30 +173,41 @@ def process_tick(state: GameState) -> GameState:
 
 
 def _spawn_bubbles(state: GameState):
-    """Fait apparaître des bulles cliquables aléatoirement."""
-    # Bulles attaquant — moins fréquentes, valeurs réduites pour garder l'économie tendue
-    if random.random() < 0.18:
+    """Fait apparaître des bulles cliquables aléatoirement autour des nœuds."""
+    infected_nodes = [n for n in state.nodes if n.infected and not n.quarantined]
+    
+    # Bulles attaquant (apparaissent près des nœuds infectés)
+    if random.random() < 0.35: # Taux augmenté (était 0.18) pour plus de dynamisme
+        if infected_nodes:
+            anchor = random.choice(infected_nodes)
+            anchor_x, anchor_y = anchor.x, anchor.y
+        else:
+            anchor_x, anchor_y = 450, 350
+
         kind = random.choice(["breach", "exfiltration"])
         value = random.randint(6, 18)
-        x = random.uniform(50, 850)
-        y = random.uniform(50, 650)
         state.bubbles.append(Bubble(
-            id=state.next_bubble_id, x=round(x, 1), y=round(y, 1),
-            kind=kind, value=value, ttl=5,
+            id=state.next_bubble_id, 
+            x=round(anchor_x + random.uniform(-40, 40), 1), 
+            y=round(anchor_y + random.uniform(-40, 40), 1),
+            kind=kind, value=value, ttl=10,
         ))
         state.next_bubble_id += 1
 
-    # Bulles défenseur
-    if random.random() < 0.15:
-        kind = random.choice(["log_analysis", "patch_deploy"])
-        value = random.randint(3, 12)
-        x = random.uniform(50, 850)
-        y = random.uniform(50, 650)
-        state.bubbles.append(Bubble(
-            id=state.next_bubble_id, x=round(x, 1), y=round(y, 1),
-            kind=kind, value=value, ttl=5,
-        ))
-        state.next_bubble_id += 1
+    # Bulles défenseur (apparaissent près des nœuds sains)
+    if random.random() < 0.20:
+        healthy_nodes = [n for n in state.nodes if not n.infected and not n.quarantined]
+        if healthy_nodes:
+            anchor = random.choice(healthy_nodes)
+            kind = random.choice(["log_analysis", "patch_deploy"])
+            value = random.randint(3, 12)
+            state.bubbles.append(Bubble(
+                id=state.next_bubble_id, 
+                x=round(anchor.x + random.uniform(-30, 30), 1), 
+                y=round(anchor.y + random.uniform(-30, 30), 1),
+                kind=kind, value=value, ttl=10,
+            ))
+            state.next_bubble_id += 1
 
 
 def click_bubble(state: GameState, bubble_id: int) -> dict:

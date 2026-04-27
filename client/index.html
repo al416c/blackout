@@ -8,6 +8,17 @@
     <link rel="stylesheet" href="css/game-theme.css">
 </head>
 <body>
+    <!-- Canvas pour l'effet de réseau de particules (Constellation) -->
+    <canvas id="bg-particles"></canvas>
+
+    <!-- Overlay pour les effets de glitch en arrière-plan -->
+    <div class="bg-glitch-overlay">
+        <div class="glitch-slice" style="top: 15%; animation-delay: -1s;"></div>
+        <div class="glitch-slice" style="top: 42%; animation-delay: -2.5s;"></div>
+        <div class="glitch-slice" style="top: 68%; animation-delay: -0.5s;"></div>
+        <div class="glitch-slice" style="top: 85%; animation-delay: -3s;"></div>
+    </div>
+
     <!-- ── Écran d'authentification ────────────────────────────── -->
     <div id="auth-screen" class="screen active">
         <div class="auth-container">
@@ -222,7 +233,7 @@
                     <p>Entrez des commandes hacking dans le terminal pour gagner des bonus. Chaque classe a ses propres commandes. Tapez <code>help</code> pour la liste complete.</p>
                 </section>
             </div>
-            <button id="btn-close-rules" class="btn btn-primary btn-glitch">Fermer</button>
+            <button id="btn-close-rules" class="btn btn-primary">Fermer</button>
         </div>
     </div>
 
@@ -243,8 +254,10 @@
     <script src="js/auth.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/upgrades.js"></script>
-    <script src="js/game.js"></script>
     <script src="js/terminal.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/particles.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>
