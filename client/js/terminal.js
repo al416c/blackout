@@ -1,116 +1,44 @@
 /**
- * BLACKOUT — Terminal de commandes (façon hacking)
- * Permet de saisir des commandes texte qui pilotent des actions côté serveur.
+ * BLACKOUT — Terminal de commandes (Galactic High-Tech)
  */
 
 const Terminal = (() => {
     const STORAGE_KEY = 'blackout_terminal_height';
-    const DEFAULT_HEIGHT = 220;
-    const MIN_HEIGHT = 140;
-    const MAX_HEIGHT = 560;
+    const DEFAULT_HEIGHT = 380;
+    const MIN_HEIGHT = 160;
+    const MAX_HEIGHT = 800;
 
-    let outputEl;
-    let inputEl;
-    let panelEl;
-    let resizeHandleEl;
+    let outputEl, inputEl, panelEl, resizeHandleEl;
+    let history = [], historyIdx = -1;
 
-    function clampHeight(height) {
-        return Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, height));
-    }
-
-    function getStoredHeight() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            const value = parseInt(raw || '', 10);
-            return Number.isFinite(value) ? value : null;
-        } catch (_) {
-            return null;
-        }
-    }
-
-    function persistHeight(height) {
-        try {
-            localStorage.setItem(STORAGE_KEY, String(height));
-        } catch (_) {
-            // Ignore storage errors (privacy mode, blocked storage, etc.)
-        }
-    }
-
+    function clampHeight(height) { return Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, height)); }
     function applyPanelHeight(height) {
         if (!panelEl) return;
         const clamped = clampHeight(height);
         panelEl.style.height = `${clamped}px`;
-        persistHeight(clamped);
+        localStorage.setItem(STORAGE_KEY, String(clamped));
+        window.dispatchEvent(new Event('resize'));
     }
 
     function setupResizeControls() {
-        if (!panelEl) return;
+        const saved = localStorage.getItem(STORAGE_KEY);
+        setTimeout(() => applyPanelHeight(saved ? parseInt(saved) : DEFAULT_HEIGHT), 100);
 
-        const saved = getStoredHeight();
-        applyPanelHeight(saved ?? DEFAULT_HEIGHT);
+        document.getElementById('terminal-shrink')?.addEventListener('click', () => applyPanelHeight(panelEl.offsetHeight - 60));
+        document.getElementById('terminal-reset')?.addEventListener('click', () => applyPanelHeight(DEFAULT_HEIGHT));
+        document.getElementById('terminal-grow')?.addEventListener('click', () => applyPanelHeight(panelEl.offsetHeight + 60));
 
-        const shrinkBtn = document.getElementById('terminal-shrink');
-        const resetBtn = document.getElementById('terminal-reset');
-        const growBtn = document.getElementById('terminal-grow');
-
-        shrinkBtn?.addEventListener('click', () => {
-            applyPanelHeight(panelEl.offsetHeight - 24);
-        });
-        resetBtn?.addEventListener('click', () => {
-            applyPanelHeight(DEFAULT_HEIGHT);
-        });
-        growBtn?.addEventListener('click', () => {
-            applyPanelHeight(panelEl.offsetHeight + 24);
-        });
-
-        let dragging = false;
-        let startY = 0;
-        let startHeight = 0;
-
-        function startDrag(clientY) {
-            dragging = true;
-            startY = clientY;
-            startHeight = panelEl.offsetHeight;
-            document.body.classList.add('terminal-resizing');
-        }
-
-        function moveDrag(clientY) {
-            if (!dragging) return;
-            const delta = startY - clientY;
-            applyPanelHeight(startHeight + delta);
-        }
-
-        function stopDrag() {
-            dragging = false;
-            document.body.classList.remove('terminal-resizing');
-        }
-
+        let dragging = false, startY = 0, startHeight = 0;
         resizeHandleEl?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startDrag(e.clientY);
+            e.preventDefault(); dragging = true; startY = e.clientY; startHeight = panelEl.offsetHeight;
+            document.body.classList.add('terminal-resizing');
         });
-
         window.addEventListener('mousemove', (e) => {
-            moveDrag(e.clientY);
+            if (!dragging) return;
+            const delta = startY - e.clientY;
+            applyPanelHeight(startHeight + delta);
         });
-
-        window.addEventListener('mouseup', () => {
-            stopDrag();
-        });
-
-        resizeHandleEl?.addEventListener('touchstart', (e) => {
-            if (!e.touches.length) return;
-            startDrag(e.touches[0].clientY);
-        }, { passive: true });
-
-        window.addEventListener('touchmove', (e) => {
-            if (!e.touches.length) return;
-            moveDrag(e.touches[0].clientY);
-        }, { passive: true });
-
-        window.addEventListener('touchend', () => {
-            stopDrag();
-        });
+        window.addEventListener('mouseup', () => { dragging = false; document.body.classList.remove('terminal-resizing'); });
     }
 
     function init() {
@@ -123,78 +51,132 @@ const Terminal = (() => {
         setupResizeControls();
 
         inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const line = inputEl.value.trim();
-                if (!line) return;
-
-                if (line.toLowerCase() === 'clear') {
-                    outputEl.innerHTML = '';
-                    inputEl.value = '';
-                    return;
-                }
-
-                appendLine(`root@blackout:~# ${line}`);
-                inputEl.value = '';
-                WS.send('command', { line });
-            } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
-                // Petit clin d'œil Ctrl+C
-                appendSystem('^C');
-            }
+            if (e.key === 'Enter') { handleCommand(); }
+            else if (e.key === 'Tab') { e.preventDefault(); handleAutocomplete(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); handleHistory(-1); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); handleHistory(1); }
         });
 
-        // Garder le focus sur l'entrée quand on clique dans le panneau
-        document.getElementById('terminal-panel').addEventListener('click', () => {
-            inputEl.focus();
-        });
+        panelEl.addEventListener('click', () => inputEl.focus());
 
-        // Résultats des commandes côté serveur
         WS.on('command_result', (data) => {
-            if (data.output) {
-                appendSystem(data.output);
-            }
-            if (data.error) {
-                appendSystem(`Erreur: ${data.error}`);
-            }
+            if (data.output) print(data.output, 'system');
+            if (data.error) print(`Erreur: ${data.error}`, 'error');
         });
 
-        // Premier message d'accueil
-        appendSystem('┌─────────────────────────────────────────────────┐');
-        appendSystem('│  ██████╗ ██╗      █████╗  ██████╗██╗  ██╗ ██████╗ ██╗   ██╗████████╗');
-        appendSystem('│  ██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔═══██╗██║   ██║╚══██╔══╝');
-        appendSystem('│  ██████╔╝██║     ███████║██║     █████╔╝ ██║   ██║██║   ██║   ██║   ');
-        appendSystem('│  ██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██║   ██║██║   ██║   ██║   ');
-        appendSystem('│  ██████╔╝███████╗██║  ██║╚██████╗██║  ██╗╚██████╔╝╚██████╔╝   ██║   ');
-        appendSystem('│  ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ');
-        appendSystem('└─────────────────────────────────────────────────┘');
-        appendSystem('Session initialisée. Tapez "help" pour afficher les commandes disponibles.');
+        printBanner();
+        print('\x1b[2m--- UPLINK_ESTABLISHED // VECTOR: BLACKOUT ---\x1b[0m');
+        print('Tapez "help" pour voir les protocoles système.');
     }
 
-    function appendLine(text) {
+    function printBanner() {
+        const banner = `
+██████╗ ██╗      █████╗  ██████╗██╗  ██╗ ██████╗ ██╗   ██╗████████╗
+██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔═══██╗██║   ██║╚══██╔══╝
+██████╔╝██║     ███████║██║     █████╔╝ ██║   ██║██║   ██║   ██║   
+██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██║   ██║██║   ██║   ██║   
+██████╔╝███████╗██║  ██║╚██████╗██║  ██╗╚██████╔╝╚██████╔╝   ██║   
+╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝`;
+        
         if (!outputEl) return;
-        const line = document.createElement('div');
-        line.className = 'terminal-line';
-        line.textContent = text;
-        outputEl.appendChild(line);
-        outputEl.scrollTop = outputEl.scrollHeight;
+        const el = document.createElement('div');
+        el.className = 'ascii-banner';
+        el.style.whiteSpace = 'pre';
+        el.innerHTML = `<span style="color:#00f2ff; font-weight:bold;">${banner}</span>`;
+        outputEl.appendChild(el);
     }
 
-    function appendSystem(text) {
+    function handleCommand() {
+        const line = inputEl.value.trim(); if (!line) return;
+        history.push(line); historyIdx = -1;
+        print(`root@blackout:~# ${line}`);
+        inputEl.value = '';
+
+        const parts = line.split(' '), cmd = parts[0].toLowerCase(), args = parts.slice(1);
+        if (cmd === 'clear') outputEl.innerHTML = '';
+        else if (cmd === 'modules' || cmd === 'shop') print(Upgrades.getAvailableModulesText(), 'system');
+        else if (cmd === 'status') handleStatus();
+        else if (cmd === 'install') {
+            if (args.length === 0) print("Usage: install [id|nom]", "error");
+            else handleInstall(args[0]);
+        } else WS.send('command', { line });
+    }
+
+    function handleInstall(target) {
+        let up = Upgrades.getUpgradeById(target);
+        if (!up) up = Upgrades.matchUpgrade(target)[0];
+        
+        if (!up) { print(`[ERROR] Module '${target}' introuvable.`, "error"); return; }
+        
+        // Empêcher l'achat si déjà acquis
+        if (Game.getState()?.purchased_upgrades.includes(up.id)) {
+            print(`[INFO] Module '${up.name}' déjà injecté.`, "system");
+            return;
+        }
+
+        print(`[WAIT] Initialisation de l'injection du module '${up.name}'...`);
+        let prog = 0;
+        const iv = setInterval(() => {
+            prog += 25; const bar = '█'.repeat(prog/10).padEnd(10, '░');
+            print(`[PROG] Injection : [${bar}] ${prog}%`, 'system');
+            if (prog >= 100) { 
+                clearInterval(iv); 
+                WS.send('buy_upgrade', { upgrade_id: parseInt(up.id) }); 
+            }
+        }, 200);
+    }
+
+    function handleStatus() {
+        const s = Game.getState(); if (!s) return;
+        let out = `\n\x1b[1;36m═══ SYSTEM_STATUS ═══\x1b[0m\n`;
+        out += `Malware  : \x1b[1m${s.malware_class.toUpperCase()}\x1b[0m\n`;
+        out += `CPU      : \x1b[1;33m${Math.floor(s.cpu_cycles)}\x1b[0m Cycles\n`;
+        out += `Méfiance : \x1b[1;31m${Math.floor(s.suspicion)}%\x1b[0m\n`;
+        out += `Réseau   : ${s.infected_count}/${s.total_nodes} compromis\n`;
+        print(out, 'system');
+    }
+
+    function handleAutocomplete() {
+        const line = inputEl.value;
+        const parts = line.split(' ');
+        
+        if (parts.length === 2 && parts[0].toLowerCase() === 'install') {
+            const matches = Upgrades.matchUpgrade(parts[1]);
+            if (matches.length === 1) {
+                inputEl.value = `install ${matches[0].name.toLowerCase().replace(/ /g, '_')}`;
+            } else if (matches.length > 1) {
+                print("Suggestions: " + matches.map(m => `\x1b[1m${m.name}\x1b[0m`).join(', '), 'system');
+            }
+        } else if (parts.length === 1) {
+            const cmds = ['help', 'status', 'modules', 'shop', 'install', 'clear', 'hack', 'nmap', 'ps', 'whoami'];
+            const matches = cmds.filter(c => c.startsWith(parts[0].toLowerCase()));
+            if (matches.length === 1) inputEl.value = matches[0] + ' ';
+        }
+    }
+
+    function handleHistory(dir) {
+        if (history.length === 0) return;
+        if (historyIdx === -1) historyIdx = history.length;
+        historyIdx = Math.max(0, Math.min(history.length, historyIdx + dir));
+        inputEl.value = (historyIdx < history.length) ? history[historyIdx] : '';
+    }
+
+    function print(text, type = 'line') {
         if (!outputEl) return;
         const lines = String(text ?? '').split('\n');
-        for (const part of lines) {
-            const line = document.createElement('div');
-            line.className = 'terminal-line terminal-system';
-            line.textContent = part;
-            outputEl.appendChild(line);
-        }
+        lines.forEach(lt => {
+            const el = document.createElement('div'); el.className = `terminal-line terminal-${type}`;
+            lt = lt.replace(/\x1b\[1;31m/g, '<span style="color:#ff0055; font-weight:bold;">');
+            lt = lt.replace(/\x1b\[1;33m/g, '<span style="color:#ffcc00; font-weight:bold;">');
+            lt = lt.replace(/\x1b\[1;34m/g, '<span style="color:#00f2ff; font-weight:bold;">');
+            lt = lt.replace(/\x1b\[1;36m/g, '<span style="color:#00ff99; font-weight:bold;">');
+            lt = lt.replace(/\x1b\[1m/g, '<span style="font-weight:bold;">');
+            lt = lt.replace(/\x1b\[2m/g, '<span style="opacity:0.6;">');
+            lt = lt.replace(/\x1b\[0m/g, '</span>');
+            el.innerHTML = lt; outputEl.appendChild(el);
+        });
         outputEl.scrollTop = outputEl.scrollHeight;
     }
 
-    return { init, appendLine, appendSystem };
+    return { init, print };
 })();
-
-document.addEventListener('DOMContentLoaded', () => {
-    Terminal.init();
-});
-

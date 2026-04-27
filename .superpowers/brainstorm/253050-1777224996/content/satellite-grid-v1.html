@@ -1,0 +1,195 @@
+<style>
+  :root {
+    --bg-void: #08090d;
+    --building-top: #12141d;
+    --building-side: #1a1d29;
+    --nebula-purple: #8a4fff;
+    --ui-cyan: #00f2ff;
+    --street-grid: rgba(0, 242, 255, 0.03);
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    background-color: var(--bg-void);
+    color: #cbd5e0;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+
+    /* Motif Ville Vue du Dessus (Top-Down) */
+    background-image: 
+      /* "Streets" Grid */
+      linear-gradient(var(--street-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--street-grid) 1px, transparent 1px),
+      /* Buildings (Quadrilatères de différentes tailles) */
+      linear-gradient(var(--building-top), var(--building-top));
+    background-size: 80px 80px, 80px 80px, 60px 40px;
+    background-position: 0 0, 0 0, 10px 10px;
+    background-repeat: repeat, repeat, repeat;
+  }
+
+  /* Créer une impression de ville aléatoire avec des formes complexes en fond */
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+      /* Gros blocs */
+      linear-gradient(var(--building-top), var(--building-top)),
+      linear-gradient(var(--building-top), var(--building-top)),
+      linear-gradient(var(--building-top), var(--building-top));
+    background-size: 120px 180px, 100px 100px, 200px 150px;
+    background-position: 15% 20%, 60% 45%, 80% 10%;
+    background-repeat: no-repeat;
+    opacity: 0.8;
+    z-index: -2;
+  }
+
+  /* Détails sur les toits (antennes, grilles) */
+  .city-detail {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 10px 10px;
+    z-index: -1;
+  }
+
+  .game-container {
+    display: grid;
+    grid-template-rows: 70px 1fr 220px;
+    height: 100vh;
+  }
+
+  /* HUD */
+  .hud-full {
+    background: rgba(10, 12, 18, 0.95);
+    border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+    display: grid;
+    grid-template-columns: 250px 1fr 250px;
+    align-items: center;
+    padding: 0 40px;
+    backdrop-filter: blur(10px);
+    z-index: 10;
+  }
+
+  .stat-label { font-size: 9px; color: var(--ui-cyan); text-transform: uppercase; letter-spacing: 2px; }
+  .stat-value { font-size: 1.3rem; font-family: var(--font-mono); color: #fff; font-weight: 200; }
+
+  /* Blue Team Monitor */
+  .blue-team-monitor {
+    padding: 0 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .progress-wrap {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.03);
+    margin-top: 8px;
+    position: relative;
+    border-radius: 2px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 28%;
+    background: var(--nebula-purple);
+    box-shadow: 0 0 15px var(--nebula-purple);
+  }
+
+  /* Nodes */
+  .node {
+    position: absolute;
+    width: 20px; height: 20px;
+    background: var(--nebula-purple);
+    clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);
+    box-shadow: 0 0 30px var(--nebula-purple);
+    z-index: 5;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .node.uninfected {
+    background: rgba(255,255,255,0.05);
+    clip-path: none;
+    border-radius: 2px;
+    width: 12px; height: 12px;
+    box-shadow: none;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* Connections as power lines */
+  .conn-line {
+    position: absolute;
+    stroke: var(--nebula-purple);
+    stroke-width: 2;
+    opacity: 0.15;
+  }
+
+  /* Terminal */
+  .terminal-box {
+    background: #050608;
+    border-top: 1px solid rgba(0, 242, 255, 0.1);
+    padding: 20px 40px;
+    font-family: var(--font-mono);
+    color: #8892b0;
+  }
+  .prompt { color: var(--ui-cyan); }
+
+</style>
+
+<div class="city-detail"></div>
+
+<div class="game-container">
+  <div class="hud-full">
+    <div class="stat-group">
+      <span class="stat-label">Infiltration Link</span>
+      <span class="stat-value">METRO_NET_ALPHA</span>
+    </div>
+
+    <div class="blue-team-monitor">
+      <div style="display:flex; justify-content:space-between; width: 100%;">
+        <span class="stat-label" style="color:var(--nebula-purple)">IDS Awareness</span>
+        <span style="font-family:var(--font-mono); color:#fff; font-size:12px;">LOW (28%)</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="stat-group" style="align-items: flex-end;">
+      <span class="stat-label">Cycle Reserves</span>
+      <span class="stat-value" style="color:var(--ui-cyan);">42,801</span>
+    </div>
+  </div>
+
+  <div style="position:relative; flex:1; overflow:hidden;">
+    <!-- Simulated Building Shadows/Relief -->
+    <div style="position:absolute; top:25%; left:30%; width:120px; height:150px; background:var(--building-top); border:1px solid rgba(255,255,255,0.05); box-shadow: 10px 10px 40px rgba(0,0,0,0.5);"></div>
+    <div style="position:absolute; top:55%; left:50%; width:80px; height:80px; background:var(--building-top); border:1px solid rgba(255,255,255,0.05); box-shadow: 10px 10px 40px rgba(0,0,0,0.5);"></div>
+    <div style="position:absolute; top:10%; left:65%; width:180px; height:100px; background:var(--building-top); border:1px solid rgba(255,255,255,0.05); box-shadow: 10px 10px 40px rgba(0,0,0,0.5);"></div>
+
+    <!-- Nodes -->
+    <div class="node" style="top: 35%; left: 35%;"></div>
+    <div class="node" style="top: 65%; left: 55%;"></div>
+    <div class="node uninfected" style="top: 15%; left: 70%;"></div>
+    <div class="node uninfected" style="top: 20%; left: 20%;"></div>
+
+    <svg style="position:absolute; width:100%; height:100%; pointer-events:none;">
+      <line x1="35%" y1="35%" x2="55%" y2="65%" class="conn-line" />
+      <line x1="55%" y1="65%" x2="70%" y2="15%" class="conn-line" style="stroke:#fff; opacity:0.05;" />
+    </svg>
+    
+    <!-- Data overlay -->
+    <div style="position:absolute; bottom:20px; left:40px; font-family:var(--font-mono); font-size:10px; opacity:0.3;">
+      SCAN_COORD: 48.8566 N, 2.3522 E<br>
+      ALTITUDE: 450m AGL<br>
+      ZOOM: 1.2X
+    </div>
+  </div>
+
+  <div class="terminal-box">
+    <div>[SEC] Encryption key 0xBF32 rotated.</div>
+    <div>[NET] Node #12 (Government Hub) is now vulnerable to 'BruteForce'.</div>
+    <div style="color:#fff; margin-top:10px;"><span class="prompt">></span> root@city_grid:~# install exploit_v3 --target=0x12<span style="display:inline-block; width:8px; height:16px; background:var(--ui-cyan); margin-left: 5px; animation: blink 1s infinite;"></span></div>
+  </div>
+</div>
+
+<style>
+  @keyframes blink { 50% { opacity: 0; } }
+</style>

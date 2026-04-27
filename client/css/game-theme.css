@@ -1,0 +1,113 @@
+/* ── Galactic High-Tech Game Theme ────────────────────────────── */
+
+#game-screen {
+    flex-direction: column;
+    background: #010206 !important; 
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+}
+
+/* HUD - Glassmorphism & Stellar Cyan */
+.hud-full {
+    height: 90px;
+    background: rgba(10, 12, 18, 0.98) !important;
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+    display: grid;
+    grid-template-columns: 250px 1fr 250px;
+    align-items: center;
+    padding: 0 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+}
+
+.stat-label { font-size: 9px; color: #00f2ff; text-transform: uppercase; letter-spacing: 2px; }
+.stat-value { font-size: 1.5rem; font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 200; }
+#hud-cpu { color: #00f2ff; }
+
+/* Detection Monitor (Massive & Segmented) */
+.detection-monitor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 40px;
+}
+.detection-label {
+    font-size: 10px;
+    color: #8a4fff;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.detection-bar-container {
+    width: 100%;
+    max-width: 550px;
+    height: 22px;
+    background: #000;
+    border: 1px solid rgba(138, 79, 255, 0.4);
+    position: relative;
+    padding: 3px;
+    box-sizing: border-box;
+}
+.detection-segments { display: flex; gap: 3px; height: 100%; width: 100%; }
+.segment { flex: 1; background: rgba(138, 79, 255, 0.1); transition: all 0.3s; }
+.segment.active { background: #8a4fff; box-shadow: 0 0 12px #8a4fff; }
+.detection-value {
+    position: absolute;
+    right: -55px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    color: #8a4fff;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Terminal Theme Overlay */
+#terminal-panel {
+    background: rgba(5, 6, 10, 0.98) !important;
+    border-top: 2px solid #00f2ff !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.9);
+}
+
+#terminal-input-line {
+    display: flex;
+    align-items: center;
+}
+
+#terminal-input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    flex: 1;
+    caret-color: transparent; /* Hide native cursor */
+}
+
+#terminal-input-line::after {
+    content: '';
+    width: 8px;
+    height: 16px;
+    background: #00f2ff;
+    display: inline-block;
+    animation: terminal-blink 1s infinite;
+    margin-left: 2px;
+}
+
+@keyframes terminal-blink { 50% { opacity: 0; } }
+
+.terminal-log-hint {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 10px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.ascii-banner { color: #00f2ff; text-shadow: 0 0 10px rgba(0, 242, 255, 0.5); font-size: 9px; }
+
+/* Map Overlay */
+.map-metadata { color: rgba(0, 242, 255, 0.4) !important; font-family: 'JetBrains Mono', monospace; }

@@ -59,7 +59,10 @@ def process_tick(state: GameState) -> GameState:
     m_mod = state.propagation_mod
     ratio = m_saines / m_totales if m_totales > 0 else 0
 
-    n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult
+    # Facteur d'amortissement de la propagation pour un rythme plus stratégique
+    propagation_dampening_factor = 0.6
+
+    n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult * propagation_dampening_factor
     # Arrondi probabiliste : évite que round(0.37) = 0 bloque totalement la progression
     whole = int(n_inf)
     frac = n_inf - whole
@@ -81,9 +84,9 @@ def process_tick(state: GameState) -> GameState:
             state.nodes[nid].infected = True
 
     # ── 2. Revenus ───────────────────────────────────────────────
-    # Multiplicateur 0.15 : revenus volontairement limités pour forcer les choix économiques
+    # Multiplicateur 0.07 pour des gains de CPU plus lents et stratégiques
     income = profile["income_per_node"]
-    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.15 * income_mult
+    state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.07 * income_mult
     state.cpu_cycles += state.passive_income_bonus
 
     # Blue Team budget
@@ -94,7 +97,8 @@ def process_tick(state: GameState) -> GameState:
     stealth_factor = max(0.05, 1.0 - state.stealth_mod)
     b_total = state.infected_count * b_machine * stealth_factor
 
-    suspicion_increase = b_total * 0.12 * suspicion_mult
+    # Division par 1.8 du gain de suspicion pour une BlueTeam plus présente (au lieu de 4.0)
+    suspicion_increase = (b_total * 0.12 * suspicion_mult) / 1.8
     state.suspicion = min(100.0, state.suspicion + suspicion_increase)
 
     # ── 4. Événements Blue Team ──────────────────────────────────
@@ -252,60 +256,20 @@ def execute_command(state: GameState, line: str) -> dict:
 
         common_commands = [
             ("help", "Affiche cette aide."),
-            ("status", "Resume de l'etat du malware."),
-            ("hack", "Active la capacite speciale de votre classe (cooldown variable)."),
-            ("nmap -A -sV", "Scan agressif du reseau (+10 CPU, cd 6t)."),
-            ("nmap -sS -T4 -Pn", "Scan SYN furtif, reduit la mefiance (cd 8t)."),
-            ("phishing start", "Lance une campagne de phishing (cd 10t)."),
-            ("log suspicion", "Affiche la jauge de mefiance actuelle."),
-            ("ifconfig", "Affiche les infos reseau de la session."),
-            ("whoami", "Affiche votre identite malware."),
-            ("ps aux", "Liste les processus actifs (cd 6t)."),
-            ("cat /etc/shadow", "Tente une extraction de hash (cd 12t)."),
-            ("tcpdump -i eth0 -nn", "Capture du trafic reseau (cd 10t)."),
+            ("status", "Résumé de l'état (CPU, Méfiance, Nœuds)."),
+            ("modules", "Affiche la boutique d'améliorations (alias: shop)."),
+            ("install [id]", "Installe un module via son identifiant."),
+            ("hack", "Capacité spéciale (cooldown variable)."),
+            ("clear", "Efface l'écran du terminal."),
         ]
 
-        malware_commands = {
-            "worm": [
-                ("masscan --rate 10000 -p0-65535", "Scan massif de ports (cd 10t)."),
-                ("exploit/ms17-010", "Lance l'exploit EternalBlue (cd 15t)."),
-                ("./propagate --aggressive", "Force la propagation (cd 12t)."),
-                ("botnet deploy <miners|ddos>", "Deploie le botnet (cd 15/20t)."),
-            ],
-            "trojan": [
-                ("msfvenom -p reverse_tcp", "Genere un payload reverse shell (cd 10t)."),
-                ("mimikatz sekurlsa::logonpasswords", "Dump les credentials (cd 12t)."),
-                ("ssh -D 1080 pivot@target", "Ouvre un tunnel SOCKS (cd 10t)."),
-                ("exfil --dns --encode base64", "Exfiltration DNS furtive (cd 12t)."),
-            ],
-            "ransomware": [
-                ("encrypt --cipher aes-256-cbc", "Chiffre les fichiers (cd 12t)."),
-                ("ransom --note DROP", "Depose une demande de rancon (cd 10t)."),
-                ("wmic shadowcopy delete", "Supprime les sauvegardes (cd 15t)."),
-                ("tor-negotiate --btc-wallet", "Negocie paiement via Tor (cd 20t)."),
-            ],
-            "rootkit": [
-                ("insmod /dev/null/rootkit.ko", "Injecte un module noyau (cd 12t)."),
-                ("syscall_hook --hide-pid", "Hook les appels systeme (cd 15t)."),
-                ("dd if=/dev/sda bs=512 count=1", "Infecte le bootloader (cd 15t)."),
-                ("ld_preload inject /lib/libhook.so", "Injection via LD_PRELOAD (cd 12t)."),
-            ],
-        }
-
-        cmd_width = max(
-            max(len(name) for name, _ in common_commands),
-            max(len(name) for name, _ in malware_commands.get(mc, [])),
-        )
-
+        # On garde quelques commandes RP utiles pour l'immersion si souhaité, 
+        # mais ici on simplifie au maximum comme demandé.
+        
+        cmd_width = max(len(name) for name, _ in common_commands)
         rows = [f"{name.ljust(cmd_width)} - {desc}" for name, desc in common_commands]
-        rows.append("")
-        rows.append(f"[{mc.upper()}]")
-        rows.extend(
-            f"{name.ljust(cmd_width)} - {desc}"
-            for name, desc in malware_commands.get(mc, [])
-        )
 
-        title = "AVAILABLE COMMANDS"
+        title = "COMMANDES DISPONIBLES"
         inner_width = max(len(title), *(len(row) for row in rows))
 
         boxed = []

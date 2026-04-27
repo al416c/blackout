@@ -1,0 +1,214 @@
+<style>
+  :root {
+    --bg-void: #050608;
+    --building-base: #0c0e16;
+    --building-large: #121520;
+    --nebula-purple: #8a4fff;
+    --ui-cyan: #00f2ff;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    background-color: var(--bg-void);
+    color: #cbd5e0;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+
+    /* Ville dense vue de dessus - plein de petits bâtiments */
+    background-image: 
+      radial-gradient(rgba(0, 242, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-void) 1px, transparent 1px),
+      linear-gradient(var(--bg-void) 1px, transparent 1px),
+      linear-gradient(var(--building-base), var(--building-base));
+    background-size: 30px 30px, 12px 12px, 12px 12px, 100% 100%;
+  }
+
+  /* Overlay pour les gros bâtiments aléatoires */
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+      linear-gradient(var(--building-large), var(--building-large)),
+      linear-gradient(var(--building-large), var(--building-large)),
+      linear-gradient(var(--building-large), var(--building-large)),
+      linear-gradient(var(--building-large), var(--building-large));
+    background-size: 150px 100px, 120px 180px, 80px 80px, 200px 120px;
+    background-position: 10% 15%, 75% 10%, 40% 60%, 85% 70%;
+    background-repeat: no-repeat;
+    opacity: 0.6;
+    z-index: -1;
+  }
+
+  .game-container {
+    display: grid;
+    grid-template-rows: 90px 1fr 220px;
+    height: 100vh;
+  }
+
+  /* HUD - Barre du haut */
+  .hud-full {
+    background: rgba(10, 12, 18, 0.98);
+    border-bottom: 1px solid var(--ui-border);
+    display: grid;
+    grid-template-columns: 250px 1fr 250px;
+    align-items: center;
+    padding: 0 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    z-index: 10;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+  }
+
+  /* BARRE DE DÉTECTION SEGMENTÉE */
+  .detection-monitor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 40px;
+  }
+  .detection-label {
+    font-size: 10px;
+    color: var(--nebula-purple);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .detection-bar-container {
+    width: 100%;
+    max-width: 550px;
+    height: 22px;
+    background: #000;
+    border: 1px solid rgba(138, 79, 255, 0.4);
+    position: relative;
+    padding: 3px;
+    box-sizing: border-box;
+  }
+  .detection-segments {
+    display: flex;
+    gap: 3px;
+    height: 100%;
+    width: 100%;
+  }
+  .segment {
+    flex: 1;
+    background: rgba(138, 79, 255, 0.1);
+    height: 100%;
+  }
+  .segment.active {
+    background: var(--nebula-purple);
+    box-shadow: 0 0 12px var(--nebula-purple);
+  }
+  .detection-value {
+    position: absolute;
+    right: -55px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-mono);
+    color: var(--nebula-purple);
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .stat-group { display: flex; flex-direction: column; }
+  .stat-label { font-size: 9px; color: var(--ui-cyan); text-transform: uppercase; letter-spacing: 2px; }
+  .stat-value { font-size: 1.5rem; font-family: var(--font-mono); color: #fff; font-weight: 200; }
+
+  /* Nodes */
+  .node {
+    position: absolute;
+    width: 18px; height: 18px;
+    background: var(--nebula-purple);
+    border: 2px solid #fff;
+    box-shadow: 0 0 25px var(--nebula-purple);
+    z-index: 5;
+    transform: rotate(45deg);
+  }
+  .node.uninfected {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.2);
+    width: 12px; height: 12px;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.5;
+  }
+
+  /* Terminal Style */
+  .terminal-box {
+    background: #050608;
+    border-top: 2px solid var(--ui-cyan);
+    padding: 20px 40px;
+    font-family: var(--font-mono);
+  }
+  .prompt { color: var(--ui-cyan); margin-right: 10px; }
+
+</style>
+
+<div class="game-container">
+  <div class="hud-full">
+    <div class="stat-group">
+      <span class="stat-label">Vector ID</span>
+      <span class="stat-value">SHADOW_ALPHA</span>
+    </div>
+
+    <div class="detection-monitor">
+      <span class="detection-label">BlueTeam Trace Status</span>
+      <div class="detection-bar-container">
+        <div class="detection-segments">
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment active"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+        </div>
+        <span class="detection-value">40%</span>
+      </div>
+    </div>
+
+    <div class="stat-group" style="align-items: flex-end;">
+      <span class="stat-label">CPU Cycles</span>
+      <span class="stat-value" style="color:var(--ui-cyan);">15,240.20</span>
+    </div>
+  </div>
+
+  <div style="position:relative; flex:1; overflow:hidden;">
+    <!-- Large key structures added for the "City" look -->
+    <div style="position:absolute; top:15%; left:10%; width:150px; height:100px; background:var(--building-large); border:1px solid rgba(255,255,255,0.03); box-shadow: 5px 5px 15px rgba(0,0,0,0.3);"></div>
+    <div style="position:absolute; top:65%; left:70%; width:180px; height:140px; background:var(--building-large); border:1px solid rgba(255,255,255,0.03); box-shadow: 5px 5px 15px rgba(0,0,0,0.3);"></div>
+    <div style="position:absolute; top:40%; left:45%; width:100px; height:100px; background:var(--building-large); border:1px solid rgba(255,255,255,0.03); box-shadow: 5px 5px 15px rgba(0,0,0,0.3);"></div>
+
+    <!-- Nodes placed on/near buildings -->
+    <div class="node" style="top: 25%; left: 15%;"></div>
+    <div class="node" style="top: 75%; left: 75%;"></div>
+    <div class="node uninfected" style="top: 45%; left: 50%;"></div>
+    <div class="node uninfected" style="top: 30%; left: 80%;"></div>
+
+    <svg style="position:absolute; width:100%; height:100%; pointer-events:none;">
+      <line x1="15%" y1="25%" x2="50%" y2="45%" style="stroke:rgba(255,255,255,0.1); stroke-width:1; stroke-dasharray: 4;" />
+      <line x1="15%" y1="25%" x2="75%" y2="75%" style="stroke:var(--nebula-purple); stroke-width:1.5; opacity: 0.3;" />
+    </svg>
+  </div>
+
+  <div class="terminal-box">
+    <div style="color: #666; font-size: 11px; margin-bottom: 8px;">SYSTEM_LOG // METROPOLIS_GRID_SCAN</div>
+    <div style="color:#fff;"><span class="prompt">></span> install city_mapper --target=central_hub<span style="display:inline-block; width:8px; height:18px; background:var(--ui-cyan); margin-left: 5px; animation: blink 1s infinite;"></span></div>
+  </div>
+</div>
+
+<style>
+  @keyframes blink { 50% { opacity: 0; } }
+</style>

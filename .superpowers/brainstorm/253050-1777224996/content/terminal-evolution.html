@@ -1,0 +1,59 @@
+<h2>Refonte : Évolution par Terminal</h2>
+<p class="subtitle">Le terminal devient l'outil d'achat unique. L'arbre sert de guide visuel.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Arbre d'Évolution (Visuel)</div>
+    <div class="mockup-body" style="background:#0a0a0a; color:#eee; font-family:monospace; padding:10px;">
+      <div style="border:1px solid #333; padding:10px; margin-bottom:10px; opacity:0.6;">
+        <span style="color:var(--red)">[TRANSMISSION]</span><br>
+        Scan réseau (N1) <br>
+        <span style="color:#00ff00; font-size:0.8em">> cmd: scan.deploy --force</span>
+      </div>
+      <div style="border:2px solid var(--red); padding:10px; box-shadow: 0 0 10px rgba(255,0,0,0.3);">
+        <span style="color:var(--red)">[TRANSMISSION]</span><br>
+        Exploitation SMB (N2)<br>
+        <span style="color:#00ff00; font-size:0.8em">> cmd: exploit.smb --target=all</span>
+        <br><br>
+        <span style="background:var(--red); color:white; padding:2px 5px; font-size:0.7em;">REQUIS : 120 CPU</span>
+      </div>
+      <div style="text-align:center; padding:10px;">↓</div>
+      <div style="border:1px solid #333; padding:10px; opacity:0.4;">
+        Exploit Zero-Day (N3)<br>
+        <span style="color:#666; font-size:0.8em">Vérifiez les prérequis...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Terminal (Action)</div>
+    <div class="mockup-body" style="background:#000; color:#0f0; font-family:'Courier New', monospace; padding:10px; font-size:0.9em;">
+      <div>root@blackout:~# exploit.smb --target=all</div>
+      <div style="color:#fff;">[WAIT] Initialisation du module SMB...</div>
+      <div style="color:#fff;">[INFO] Coût : 120 CPU Cycles</div>
+      <div style="color:#fff;">[PROG] Injection : [==========----------] 50%</div>
+      <div style="color:var(--red); font-weight:bold;">[WARN] Bruit réseau généré : +8% méfiance</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>Pourquoi cette approche ?</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Avantages</h4>
+      <ul>
+        <li>Cohérence thématique totale (on ne clique pas, on hack).</li>
+        <li>Courbe d'apprentissage gratifiante (on finit par connaître ses commandes).</li>
+        <li>Possibilité d'ajouter des drapeaux (flags) aux commandes pour varier les effets.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Défis</h4>
+      <ul>
+        <li>Nécessite une aide visuelle claire pour ne pas frustrer le joueur.</li>
+        <li>Gestion des fautes de frappe (ajouter une auto-complétion ?).</li>
+      </ul>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 /**
  * BLACKOUT — Module de rendu du jeu (Canvas)
- * Affiche le réseau, les nœuds, les connexions et les bulles.
+ * Thème : Galactique / Dense City
  */
 
 const Game = (() => {
@@ -8,410 +8,281 @@ const Game = (() => {
     let state = null;
     let animFrame = null;
     let hoveredNode = null;
-    let hoveredBubble = null;
+    let buildings = []; 
 
-    // Caméra (zoom & déplacement)
-    let zoom = 1;
+    let zoom = 1.0;
     let offsetX = 0;
     let offsetY = 0;
     let isPanning = false;
-    let isDragging = false;
-    let lastPanX = 0;
-    let lastPanY = 0;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    const DRAG_THRESHOLD = 5;
+    let lastPanX = 0, lastPanY = 0;
 
-    // Couleurs
     const COLORS = {
-        infected:    '#ff2244',
-        healthy:     '#00cc88',
+        bg:          '#050608', 
+        infected:    '#8a4fff', 
+        healthy:     'rgba(255, 255, 255, 0.05)', 
         quarantined: '#aa44ff',
-        honeypot:    '#ffcc00',
-        connection:  'rgba(255,255,255,0.08)',
-        connectionInfected: 'rgba(255,34,68,0.2)',
+        connection:  'rgba(255, 255, 255, 0.1)', 
+        connectionInfected: 'rgba(138, 79, 255, 0.9)', // Violet opaque
     };
 
-    const BUBBLE_COLORS = {
-        breach:       { fill: 'rgba(255,34,68,0.7)',  stroke: '#ff2244' },
-        exfiltration: { fill: 'rgba(255,153,51,0.7)', stroke: '#ff9933' },
-        log_analysis: { fill: 'rgba(51,136,255,0.7)', stroke: '#3388ff' },
-        patch_deploy: { fill: 'rgba(0,204,136,0.7)',  stroke: '#00cc88' },
-    };
+    function generateCity() {
+        buildings = [];
+        for (let i = 0; i < 400; i++) { // Plus de bâtiments
+            buildings.push({
+                x: Math.random() * 2400 - 700, y: Math.random() * 2000 - 650,
+                w: 12 + Math.random() * 25, h: 12 + Math.random() * 25,
+                type: 'small'
+            });
+        }
+        for (let i = 0; i < 50; i++) {
+            buildings.push({
+                x: Math.random() * 1600 - 300, y: Math.random() * 1400 - 300,
+                w: 80 + Math.random() * 120, h: 80 + Math.random() * 120,
+                type: 'large', details: Math.random() > 0.5 ? 'helipad' : 'none'
+            });
+        }
+    }
 
-    const BUBBLE_LABELS = {
-        breach:       '🔓 Brèche',
-        exfiltration: '📤 Exfiltration',
-        log_analysis: '📋 Analyse Logs',
-        patch_deploy: '🔧 Patch',
-    };
+    function drawCity(s) {
+        if (!ctx) return;
+        
+        ctx.strokeStyle = 'rgba(0, 242, 255, 0.03)';
+        ctx.lineWidth = 0.5;
+        const gridSize = 30 * s; // Grille plus serrée comme dans le mockup
+        ctx.beginPath();
+        for (let x = offsetX % gridSize; x < canvas.width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+        for (let y = offsetY % gridSize; y < canvas.height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+        ctx.stroke();
+
+        buildings.forEach(b => {
+            const bx = b.x * s + offsetX, by = b.y * s + offsetY;
+            const bw = b.w * s, bh = b.h * s;
+
+            if (bx + bw < 0 || bx > canvas.width || by + bh < 0 || by > canvas.height) return;
+
+            ctx.fillStyle = b.type === 'large' ? '#121520' : '#0c0e16';
+            ctx.fillRect(bx, by, bw, bh);
+
+            if (b.type === 'large' && s > 0.6 && b.details === 'helipad') {
+                ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                ctx.beginPath(); ctx.arc(bx + bw/2, by + bh/2, bw/4, 0, Math.PI*2); ctx.stroke();
+            }
+        });
+    }
 
     function init() {
         canvas = document.getElementById('network-canvas');
+        if (!canvas) return;
         ctx = canvas.getContext('2d');
+        
+        generateCity();
+        resizeCanvas();
+        startRenderLoop();
 
-        window.addEventListener('resize', resizeCanvas);
-        // ResizeObserver capte aussi le resize du terminal (drag handle)
-        const ro = new ResizeObserver(() => resizeCanvas());
-        ro.observe(canvas.parentElement);
+        window.addEventListener('resize', () => { resizeCanvas(); });
+        new ResizeObserver(() => { if (canvas.clientWidth > 0) resizeCanvas(); }).observe(canvas.parentElement);
+        
         canvas.addEventListener('mousemove', onMouseMove);
         canvas.addEventListener('wheel', onWheel, { passive: false });
         canvas.addEventListener('mousedown', onMouseDown);
         window.addEventListener('mouseup', onMouseUp);
 
-        // Empêcher le menu contextuel du clic droit sur la zone de jeu
-        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
         WS.on('game_started', (data) => {
             state = data.state;
             Upgrades.loadUpgrades();
+            generateCity();
             resizeCanvas();
-            startRenderLoop();
+            if (state.nodes && state.nodes.length > 0) {
+                offsetX = canvas.width / 2 - (state.nodes[0].x * zoom);
+                offsetY = canvas.height / 2 - (state.nodes[0].y * zoom);
+            }
             updateHUD();
         });
 
         WS.on('tick', (data) => {
             state = data.state;
-            updateHUD();
             Upgrades.updatePurchased(state.purchased_upgrades);
-            Upgrades.updateStats(state);
+            updateHUD();
         });
 
-        WS.on('game_over', (data) => {
-            showGameOver(data.result, data.score);
-        });
-
-        WS.on('bubble_feedback', (data) => {
-            if (data.error) {
-                return; // bulle expirée avant le clic, ignoré silencieusement
-            } else if (data.type === 'attacker') {
-                App.toast(`+${data.gained} CPU Cycles (${BUBBLE_LABELS[data.kind] || data.kind})`, 'success');
-            } else {
-                App.toast(`Méfiance +${data.suspicion_added}%`, 'info');
-            }
-        });
+        WS.on('game_over', data => showGameOver(data.result, data.score));
     }
 
     function resizeCanvas() {
         if (!canvas || !canvas.parentElement) return;
-        const w = canvas.parentElement.clientWidth;
-        const h = canvas.parentElement.clientHeight;
-        if (w > 0 && h > 0) {
-            canvas.width = w;
-            canvas.height = h;
+        const oldW = canvas.width, oldH = canvas.height;
+        const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight;
+        if (w > 0 && h > 0 && (w !== canvas.width || h !== canvas.height)) {
+            canvas.width = w; canvas.height = h;
+            if (oldW > 0) { offsetX += (w - oldW) / 2; offsetY += (h - oldH) / 2; }
         }
     }
 
-    // ── Render Loop ─────────────────────────────────────────────
     function startRenderLoop() {
-        cancelAnimationFrame(animFrame);
-        (function loop() {
-            render();
-            animFrame = requestAnimationFrame(loop);
-        })();
+        if (animFrame) cancelAnimationFrame(animFrame);
+        const loop = () => { render(); animFrame = requestAnimationFrame(loop); };
+        animFrame = requestAnimationFrame(loop);
     }
 
-
     function render() {
-        if (!state || !ctx) return;
-        const w = canvas.width;
-        const h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
+        if (!ctx) return;
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Calculer les facteurs d'échelle (la topologie est dans ~900x700)
-        const baseW = 900;
-        const baseH = 700;
-        const scaleX = (w / baseW) * zoom;
-        const scaleY = (h / baseH) * zoom;
+        const s = zoom;
+        drawCity(s);
 
-        // ── Dessiner les connexions ─────────────────────────────
-        ctx.lineWidth = 1.2;
+        if (!state || !state.nodes) {
+            ctx.fillStyle = 'rgba(0, 242, 255, 0.2)';
+            ctx.font = '10px monospace'; ctx.textAlign = 'center';
+            ctx.fillText('UPLINK_SEARCHING...', canvas.width/2, canvas.height/2);
+            return;
+        }
+
+        // Connections
         state.nodes.forEach(node => {
             node.connections.forEach(nid => {
                 if (nid > node.id) {
                     const target = state.nodes[nid];
-                    const bothInfected = node.infected && target.infected;
-                    ctx.strokeStyle = bothInfected ? COLORS.connectionInfected : COLORS.connection;
+                    if (!target) return;
+                    const both = node.infected && target.infected;
+
+                    
                     ctx.beginPath();
-                    ctx.moveTo(node.x * scaleX + offsetX, node.y * scaleY + offsetY);
-                    ctx.lineTo(target.x * scaleX + offsetX, target.y * scaleY + offsetY);
+                    if (both) {
+                        ctx.strokeStyle = '#8a4fff'; // Violet éclatant
+                        ctx.lineWidth = 2.5;
+                        ctx.setLineDash([]);
+                        ctx.shadowColor = '#8a4fff';
+                        ctx.shadowBlur = 10;
+                    } else {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                        ctx.lineWidth = 1.0;
+                        ctx.setLineDash([5, 5]); // Pointillés
+                        ctx.shadowBlur = 0;
+                    }
+                    
+                    ctx.moveTo(node.x * s + offsetX, node.y * s + offsetY);
+                    ctx.lineTo(target.x * s + offsetX, target.y * s + offsetY);
                     ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.shadowBlur = 0;
                 }
             });
         });
 
-        // ── Dessiner les nœuds ──────────────────────────────────
+        // Nodes
         state.nodes.forEach(node => {
-            const x = node.x * scaleX + offsetX;
-            const y = node.y * scaleY + offsetY;
-            const radius = node === hoveredNode ? 10 : 7;
+            const x = node.x * s + offsetX, y = node.y * s + offsetY;
+            const r = (node === hoveredNode ? 12 : 9) * s;
 
-            let color;
-            if (node.quarantined) color = COLORS.quarantined;
-            else if (node.honeypot && !node.infected) color = COLORS.honeypot;
-            else if (node.infected) color = COLORS.infected;
-            else color = COLORS.healthy;
-
-            // Glow effect pour les nœuds infectés
-            if (node.infected && !node.quarantined) {
+            if (node.infected) {
                 ctx.save();
-                ctx.shadowColor = COLORS.infected;
-                ctx.shadowBlur = 15;
-                ctx.fillStyle = COLORS.infected;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.shadowColor = '#8a4fff'; ctx.shadowBlur = 25 * s;
+                ctx.fillStyle = '#8a4fff';
+                // Diamant
+                ctx.beginPath(); 
+                ctx.moveTo(x, y - r); 
+                ctx.lineTo(x + r, y); 
+                ctx.lineTo(x, y + r); 
+                ctx.lineTo(x - r, y); 
+                ctx.closePath();
                 ctx.fill();
+                
+                // Bordure blanche épaisse
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2 * s;
+                ctx.stroke();
                 ctx.restore();
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1 * s;
+                ctx.beginPath();
+                ctx.rect(x - 5*s, y - 5*s, 10*s, 10*s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
             }
 
-            ctx.fillStyle = color;
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // Label du nœud au survol
             if (node === hoveredNode) {
-                ctx.fillStyle = '#fff';
-                ctx.font = '11px monospace';
-                ctx.textAlign = 'center';
-                const status = node.quarantined ? 'Quarantaine' :
-                               node.honeypot ? 'Honeypot' :
-                               node.infected ? 'Infecté' : 'Sain';
-                ctx.fillText(`#${node.id} ${status}`, x, y - 16);
+                ctx.fillStyle = '#fff'; ctx.font = `${10*s}px monospace`; ctx.textAlign = 'center';
+                ctx.fillText(`ID_0x${node.id.toString(16).toUpperCase()}`, x, y - 18*s);
             }
-        });
-
-        // ── Dessiner les bulles ─────────────────────────────────
-        (state.bubbles || []).forEach(bubble => {
-            const x = bubble.x * scaleX + offsetX;
-            const y = bubble.y * scaleY + offsetY;
-            const colors = BUBBLE_COLORS[bubble.kind] || BUBBLE_COLORS.breach;
-            const radius = bubble === hoveredBubble ? 22 : 18;
-
-            // Pulse animation
-            const pulse = 1 + 0.1 * Math.sin(Date.now() / 300 + bubble.id);
-
-            ctx.save();
-            ctx.shadowColor = colors.stroke;
-            ctx.shadowBlur = 12;
-            ctx.fillStyle = colors.fill;
-            ctx.strokeStyle = colors.stroke;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, radius * pulse, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`+${bubble.value}`, x, y);
         });
     }
 
-    // ── Interactivité ───────────────────────────────────────────
     function getScaledPos(e) {
         const rect = canvas.getBoundingClientRect();
-        // Ratio entre taille CSS affichée et taille intrinsèque (évite décalage si déviation DPI)
-        const csW = rect.width  || canvas.width;
-        const csH = rect.height || canvas.height;
-        const pixRatioX = canvas.width  / csW;
-        const pixRatioY = canvas.height / csH;
-        return {
-            x: (e.clientX - rect.left) * pixRatioX,
-            y: (e.clientY - rect.top)  * pixRatioY,
-            scaleX: (canvas.width / 900) * zoom,
-            scaleY: (canvas.height / 700) * zoom,
-        };
+        return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height), s: zoom };
     }
 
     function onMouseMove(e) {
-        if (!state || isDragging) return;
-        const { x, y, scaleX, scaleY } = getScaledPos(e);
-
-        hoveredNode = null;
-        hoveredBubble = null;
-
-        // Check bubbles first (they're on top)
-        for (const b of (state.bubbles || [])) {
-            const bx = b.x * scaleX + offsetX;
-            const by = b.y * scaleY + offsetY;
-            if (Math.hypot(x - bx, y - by) < 22) {
-                hoveredBubble = b;
-                canvas.style.cursor = 'pointer';
-                return;
-            }
-        }
-
-        // Check nodes
-        for (const n of state.nodes) {
-            const nx = n.x * scaleX + offsetX;
-            const ny = n.y * scaleY + offsetY;
-            if (Math.hypot(x - nx, y - ny) < 12) {
-                hoveredNode = n;
-                canvas.style.cursor = 'pointer';
-                return;
-            }
-        }
-
-        canvas.style.cursor = 'default';
-    }
-
-    function onClick(e) {
-        // Géré via mousedown/mouseup avec seuil de drag
-    }
-
-    function handleClickAction(e) {
         if (!state) return;
-        const { x, y, scaleX, scaleY } = getScaledPos(e);
-
-        // Click on bubble? (zone de clic légèrement élargie pour plus de tolérance)
-        for (const b of (state.bubbles || [])) {
-            const bx = b.x * scaleX + offsetX;
-            const by = b.y * scaleY + offsetY;
-            if (Math.hypot(x - bx, y - by) < 26) {
-                // Suppression optimiste : la bulle disparait immédiatement sans attendre le tick
-                state.bubbles = state.bubbles.filter(b2 => b2.id !== b.id);
-                WS.send('click_bubble', { bubble_id: b.id });
-                return;
+        const { x, y, s } = getScaledPos(e);
+        hoveredNode = null;
+        for (const n of state.nodes) {
+            if (Math.hypot(x - (n.x * s + offsetX), y - (n.y * s + offsetY)) < 15 * s) {
+                hoveredNode = n; canvas.style.cursor = 'pointer'; return;
             }
         }
+        canvas.style.cursor = 'default';
     }
 
     function onWheel(e) {
         if (!state) return;
         e.preventDefault();
-
-        const delta = e.deltaY;
-        const zoomFactor = 1.05;
         const prevZoom = zoom;
-
-        if (delta < 0) {
-            zoom = Math.min(2.0, zoom * zoomFactor);
-        } else {
-            zoom = Math.max(0.6, zoom / zoomFactor);
-        }
-
-        // Zoom centré autour du curseur
+        zoom = e.deltaY < 0 ? Math.min(4.0, zoom * 1.1) : Math.max(0.3, zoom / 1.1);
         const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        offsetX = mouseX - (mouseX - offsetX) * (zoom / prevZoom);
-        offsetY = mouseY - (mouseY - offsetY) * (zoom / prevZoom);
+        offsetX = e.clientX - rect.left - (e.clientX - rect.left - offsetX) * (zoom / prevZoom);
+        offsetY = e.clientY - rect.top - (e.clientY - rect.top - offsetY) * (zoom / prevZoom);
     }
 
-    function onMouseDown(e) {
-        if (!state) return;
-        // Clic gauche, milieu ou droit pour le déplacement
-        if (e.button === 0 || e.button === 1 || e.button === 2) {
-            e.preventDefault();
-            isPanning = true;
-            isDragging = false;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            lastPanX = e.clientX;
-            lastPanY = e.clientY;
-        }
-    }
+    function onMouseDown(e) { if (!state) return; isPanning = true; lastPanX = e.clientX; lastPanY = e.clientY; }
+    function onMouseUp() { isPanning = false; }
 
-    function onMouseUp(e) {
-        if (isPanning && !isDragging && e.button === 0) {
-            // C'était un clic, pas un drag — traiter l'action
-            handleClickAction(e);
-        }
-        if (isDragging) {
-            canvas.style.cursor = 'default';
-        }
-        isPanning = false;
-        isDragging = false;
-    }
-
-    window.addEventListener('mousemove', (e) => {
+    window.addEventListener('mousemove', e => {
         if (!isPanning) return;
-        const dx = e.clientX - lastPanX;
-        const dy = e.clientY - lastPanY;
-        lastPanX = e.clientX;
-        lastPanY = e.clientY;
-
-        if (!isDragging) {
-            const totalDx = e.clientX - dragStartX;
-            const totalDy = e.clientY - dragStartY;
-            if (Math.hypot(totalDx, totalDy) > DRAG_THRESHOLD) {
-                isDragging = true;
-                canvas.style.cursor = 'grabbing';
-            }
-        }
-
-        if (isDragging) {
-            offsetX += dx;
-            offsetY += dy;
-        }
+        offsetX += e.clientX - lastPanX;
+        offsetY += e.clientY - lastPanY;
+        lastPanX = e.clientX; lastPanY = e.clientY;
     });
 
-    // ── HUD update ──────────────────────────────────────────────
     function updateHUD() {
         if (!state) return;
 
-        document.getElementById('hud-tick').textContent = state.tick;
-        document.getElementById('hud-malware').textContent =
-            state.malware_class.charAt(0).toUpperCase() + state.malware_class.slice(1);
-        document.getElementById('hud-cpu').textContent = Math.floor(state.cpu_cycles);
-        document.getElementById('hud-score').textContent = state.score;
+        // CPU
+        const cpuEl = document.getElementById('hud-cpu');
+        if (cpuEl) cpuEl.textContent = Math.floor(state.cpu_cycles).toLocaleString();
 
-        // Suspicion bar
+        // Suspicion
         const pct = Math.min(100, Math.max(0, state.suspicion));
-        const fill = document.getElementById('suspicion-fill');
         const text = document.getElementById('suspicion-text');
+        if (text) text.textContent = Math.floor(pct) + '%';
 
-        fill.style.width = pct + '%';
-        text.textContent = Math.floor(pct) + '%';
-
-        // Feedback visuel plus riche en fonction du niveau de méfiance
-        fill.classList.remove('warning', 'critical');
-        text.classList.remove('warning', 'critical');
-
-        if (pct >= 80) {
-            fill.classList.add('critical');
-            text.classList.add('critical');
-        } else if (pct >= 40) {
-            fill.classList.add('warning');
-            text.classList.add('warning');
+        // Segments de détection (Barre massive)
+        const segments = document.querySelectorAll('#detection-segments .segment');
+        if (segments.length > 0) {
+            const activeCount = Math.floor((pct / 100) * segments.length);
+            segments.forEach((seg, idx) => {
+                if (idx < activeCount) {
+                    seg.classList.add('active');
+                } else {
+                    seg.classList.remove('active');
+                }
+            });
         }
-
-        // Node info
-        document.getElementById('info-infected').textContent = state.infected_count;
-        document.getElementById('info-healthy').textContent = state.healthy_count;
-        document.getElementById('info-quarantined').textContent = state.quarantined_count;
     }
 
-    // ── Game Over ───────────────────────────────────────────────
     function showGameOver(result, score) {
         const overlay = document.getElementById('game-over-overlay');
         const title = document.getElementById('game-over-title');
-        const msg = document.getElementById('game-over-msg');
-        const scoreEl = document.getElementById('game-over-score');
-
-        if (result === 'victory') {
-            title.textContent = '🏆 VICTOIRE';
-            title.style.color = 'var(--green)';
-            msg.textContent = 'Le réseau est entièrement compromis !';
-        } else {
-            title.textContent = '💀 DÉFAITE';
-            title.style.color = 'var(--red)';
-            msg.textContent = 'Votre malware a été éradiqué par la Blue Team.';
-        }
-
-        scoreEl.textContent = score;
+        title.textContent = result === 'victory' ? '🏆 VICTOIRE' : '💀 DÉFAITE';
+        title.style.color = result === 'victory' ? '#00ff99' : '#ff0055';
+        document.getElementById('game-over-score').textContent = score;
         overlay.classList.remove('hidden');
     }
 
-    function getState() { return state; }
-
-    return { init, getState };
+    return { init, getState: () => state };
 })();

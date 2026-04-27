@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BLACKOUT</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/game-theme.css">
 </head>
 <body>
     <!-- ── Écran d'authentification ────────────────────────────── -->
     <div id="auth-screen" class="screen active">
         <div class="auth-container">
-            <h1 class="game-title">BLACK<span class="accent">OUT</span></h1>
+            <h1 class="game-title glitch" data-text="BLACKOUT">BLACK<span class="accent">OUT</span></h1>
             <p class="subtitle">Infiltrez. Propagez. Dominez.</p>
 
             <div id="auth-tabs">
@@ -28,7 +29,7 @@
                 <input type="text" id="reg-username" placeholder="Nom d'utilisateur" autocomplete="username" required>
                 <input type="password" id="reg-password" placeholder="Mot de passe" autocomplete="new-password" required>
                 <input type="password" id="reg-password2" placeholder="Confirmer le mot de passe" autocomplete="new-password" required>
-                <button type="submit" class="btn btn-primary">S'inscrire</button>
+                <button type="submit" class="btn btn-primary btn-glitch">S'inscrire</button>
             </form>
 
             <div id="auth-error" class="error-msg hidden"></div>
@@ -38,7 +39,7 @@
     <!-- ── Menu principal ──────────────────────────────────────── -->
     <div id="menu-screen" class="screen">
         <div class="menu-container">
-            <h1 class="game-title">BLACK<span class="accent">OUT</span></h1>
+            <h1 class="game-title glitch" data-text="BLACKOUT">BLACK<span class="accent">OUT</span></h1>
             <p id="welcome-msg" class="subtitle"></p>
 
             <div class="malware-select">
@@ -121,49 +122,41 @@
 
     <!-- ── Écran de jeu ────────────────────────────────────────── -->
     <div id="game-screen" class="screen">
-        <!-- HUD supérieur -->
-        <div id="game-hud">
-            <div class="hud-left">
-                <div class="hud-item">
-                    <span class="hud-label">Tick</span>
-                    <span id="hud-tick" class="hud-value">0</span>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">Malware</span>
-                    <span id="hud-malware" class="hud-value">—</span>
-                </div>
+        <!-- HUD supérieur pleine largeur -->
+        <div id="game-hud" class="hud-full">
+            <div class="stat-group">
+                <span class="stat-label">Vector ID</span>
+                <span id="hud-status-text" class="stat-value">SHADOW_ALPHA</span>
             </div>
-            <div class="hud-center">
-                <div class="suspicion-bar-container">
-                    <span class="hud-label">Méfiance</span>
-                    <div class="suspicion-bar">
-                        <div id="suspicion-fill" class="suspicion-fill" style="width:0%"></div>
+
+            <div class="detection-monitor">
+                <span class="detection-label">BlueTeam Trace Status</span>
+                <div class="detection-bar-container">
+                    <div id="detection-segments" class="detection-segments">
+                        <div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div>
+                        <div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div>
+                        <div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div>
+                        <div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div><div class="segment"></div>
                     </div>
-                    <span id="suspicion-text" class="suspicion-text">0%</span>
+                    <span id="suspicion-text" class="detection-value">0%</span>
                 </div>
             </div>
-            <div class="hud-right">
-                <div class="hud-item">
-                    <span class="hud-label">CPU Cycles</span>
-                    <span id="hud-cpu" class="hud-value resource-cpu">50</span>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">Score</span>
-                    <span id="hud-score" class="hud-value">0</span>
-                </div>
+
+            <div class="stat-group align-right">
+                <span class="stat-label">CPU Cycles</span>
+                <span id="hud-cpu" class="stat-value">0</span>
             </div>
         </div>
 
         <!-- Zone de jeu (canvas réseau) -->
         <div id="game-area">
             <canvas id="network-canvas"></canvas>
-
-            <!-- Panneau latéral upgrades -->
-            <div id="upgrade-panel" class="side-panel">
-                <button id="toggle-upgrades" class="btn-toggle">◀</button>
-                <h3 class="panel-title">Evolution</h3>
-                <div id="upgrade-stats-panel" class="upgrade-stats"></div>
-                <div id="upgrade-tree"></div>
+            
+            <!-- Metadata overlay -->
+            <div class="map-metadata">
+                SYSTEM_STATE: STABLE<br>
+                ENCRYPTION: ACTIVE<br>
+                LINK: BLACKOUT_NETWORK
             </div>
         </div>
 
@@ -172,7 +165,7 @@
             <div id="terminal-header">
                 <span class="terminal-title">Terminal BLACKOUT</span>
                 <div class="terminal-header-right">
-                    <span class="terminal-hint">Tapez <code>help</code> pour voir les commandes.</span>
+                    <span class="terminal-hint">TAB: completion | ENTER: exec</span>
                     <div class="terminal-resize-controls">
                         <button id="terminal-shrink" type="button" class="terminal-resize-btn" title="Réduire le terminal">-</button>
                         <button id="terminal-reset" type="button" class="terminal-resize-btn" title="Taille par défaut">□</button>
@@ -182,25 +175,10 @@
             </div>
             <div id="terminal-resize-handle" title="Glissez pour redimensionner le terminal"></div>
             <div id="terminal-output"></div>
+            <div class="terminal-log-hint">SYSTEM_LOG // METROPOLIS_GRID_SCAN</div>
             <div id="terminal-input-line">
-                <span class="prompt">root@blackout:~#</span>
+                <span class="prompt">></span>
                 <input id="terminal-input" type="text" autocomplete="off" spellcheck="false" />
-            </div>
-        </div>
-
-        <!-- Infos nœuds -->
-        <div id="node-info">
-            <div class="info-item">
-                <span class="dot dot-infected"></span>
-                <span>Infectés: <strong id="info-infected">0</strong></span>
-            </div>
-            <div class="info-item">
-                <span class="dot dot-healthy"></span>
-                <span>Sains: <strong id="info-healthy">0</strong></span>
-            </div>
-            <div class="info-item">
-                <span class="dot dot-quarantined"></span>
-                <span>Quarantaine: <strong id="info-quarantined">0</strong></span>
             </div>
         </div>
     </div>
@@ -244,7 +222,7 @@
                     <p>Entrez des commandes hacking dans le terminal pour gagner des bonus. Chaque classe a ses propres commandes. Tapez <code>help</code> pour la liste complete.</p>
                 </section>
             </div>
-            <button id="btn-close-rules" class="btn btn-primary">Fermer</button>
+            <button id="btn-close-rules" class="btn btn-primary btn-glitch">Fermer</button>
         </div>
     </div>
 
@@ -254,7 +232,7 @@
             <h2 id="game-over-title"></h2>
             <p id="game-over-msg"></p>
             <p>Score final: <strong id="game-over-score">0</strong></p>
-            <button id="btn-back-menu-go" class="btn btn-primary">Retour au menu</button>
+            <button id="btn-back-menu-go" class="btn btn-primary btn-glitch">Retour au menu</button>
         </div>
     </div>
 

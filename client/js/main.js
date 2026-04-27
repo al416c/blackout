@@ -8,18 +8,21 @@ const App = (() => {
     let selectedDifficulty = 'normal';
 
     function init() {
+        console.log('[APP] Initialisation...');
         // Connexion WebSocket
         WS.connect();
 
-        // Initialiser les modules
-        Auth.init();
-        Leaderboard.init();
-        Upgrades.init();
-        Game.init();
+        // Initialiser les modules avec sécurité
+        try { Auth.init(); } catch(e) { console.error('Auth.init fail', e); }
+        try { Leaderboard.init(); } catch(e) { console.error('Leaderboard.init fail', e); }
+        try { Upgrades.init(); } catch(e) { console.error('Upgrades.init fail', e); }
+        try { Game.init(); } catch(e) { console.error('Game.init fail', e); }
+        try { Terminal.init(); } catch(e) { console.error('Terminal.init fail', e); }
 
         // Sélection de malware
         document.querySelectorAll('.malware-card').forEach(card => {
             card.addEventListener('click', () => {
+                console.log('[APP] Sélection malware:', card.dataset.class);
                 document.querySelectorAll('.malware-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedMalware = card.dataset.class;
@@ -34,38 +37,59 @@ const App = (() => {
         });
 
         // Bouton lancer la partie
-        document.getElementById('btn-start-game').addEventListener('click', () => {
-            WS.send('new_game', {
-                malware_class: selectedMalware,
-                difficulty: selectedDifficulty,
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) {
+            btnStart.addEventListener('click', () => {
+                WS.send('new_game', {
+                    malware_class: selectedMalware,
+                    difficulty: selectedDifficulty,
+                });
+                showScreen('game');
             });
-            showScreen('game');
-        });
+        }
 
         // Bouton déconnexion
-        document.getElementById('btn-logout').addEventListener('click', () => {
-            Auth.logout();
-        });
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', () => {
+                Auth.logout();
+            });
+        }
 
         // Bouton retour au menu depuis game over
-        document.getElementById('btn-back-menu-go').addEventListener('click', () => {
-            document.getElementById('game-over-overlay').classList.add('hidden');
-            showScreen('menu');
-        });
+        const btnBackGO = document.getElementById('btn-back-menu-go');
+        if (btnBackGO) {
+            btnBackGO.addEventListener('click', () => {
+                document.getElementById('game-over-overlay').classList.add('hidden');
+                showScreen('menu');
+            });
+        }
 
         // Modal Règles
-        document.getElementById('btn-rules').addEventListener('click', () => {
-            document.getElementById('rules-modal').classList.remove('hidden');
-        });
-        document.getElementById('btn-close-rules').addEventListener('click', () => {
-            document.getElementById('rules-modal').classList.add('hidden');
-        });
+        const btnRules = document.getElementById('btn-rules');
+        if (btnRules) {
+            btnRules.addEventListener('click', () => {
+                document.getElementById('rules-modal').classList.remove('hidden');
+            });
+        }
+        const btnCloseRules = document.getElementById('btn-close-rules');
+        if (btnCloseRules) {
+            btnCloseRules.addEventListener('click', () => {
+                document.getElementById('rules-modal').classList.add('hidden');
+            });
+        }
     }
 
     function showScreen(name) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const screen = document.getElementById(`${name}-screen`);
         if (screen) screen.classList.add('active');
+
+        // Gérer la visibilité du terminal
+        const terminal = document.getElementById('terminal-panel');
+        if (terminal) {
+            terminal.style.display = (name === 'game') ? 'flex' : 'none';
+        }
     }
 
     function toast(message, type = 'info') {
