@@ -15,10 +15,10 @@ from typing import Optional
 # agressives en bruit pour rendre les parties plus dynamiques et lisibles.
 
 MALWARE_PROFILES = {
-    "worm":       {"propagation": 0.20, "noise_per_machine": 1.5, "income_per_node": 3.0, "start_infected": 2},
-    "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5, "income_per_node": 3.5, "start_infected": 1},
-    "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2, "income_per_node": 7.0, "start_infected": 1},
-    "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 2.5, "start_infected": 1},
+    "worm":       {"propagation": 0.20, "noise_per_machine": 1.5, "income_per_node": 1.0, "start_infected": 2},
+    "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5, "income_per_node": 1.2, "start_infected": 1},
+    "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2, "income_per_node": 2.5, "start_infected": 1},
+    "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 0.8, "start_infected": 1},
 }
 
 
@@ -62,10 +62,15 @@ class GameState:
     nodes: list[Node] = field(default_factory=list)
     total_nodes: int = 0
 
-    # Ressources joueur
+    # Ressources joueur (Red Team)
     cpu_cycles: float = 50.0
     # Ressources Blue Team
     it_budget: float = 50.0
+    blue_it_budget: float = 30.0
+    # Pare-feux actifs : {str(node_id): ticks_restants}
+    firewalled_nodes: dict = field(default_factory=dict)
+    # Ticks restants pour le scan actif (révèle les nœuds infectés)
+    scan_ticks_remaining: int = 0
 
     # Méfiance (0 – 100)
     suspicion: float = 0.0
@@ -123,6 +128,9 @@ class GameState:
             "quarantined_count": self.quarantined_count,
             "cpu_cycles": round(self.cpu_cycles, 1),
             "it_budget": round(self.it_budget, 1),
+            "blue_it_budget": round(self.blue_it_budget, 1),
+            "firewalled_nodes": {k: v for k, v in self.firewalled_nodes.items() if v > 0},
+            "scan_active": self.scan_ticks_remaining > 0,
             "suspicion": round(self.suspicion, 2),
             "patch_deployed": self.patch_deployed,
             "purchased_upgrades": self.purchased_upgrades,
