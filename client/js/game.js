@@ -139,6 +139,7 @@ const Game = (() => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const s = zoom;
+        // 1. Dessiner la ville en fond
         drawCity(s);
 
         if (!state || !state.nodes) {
@@ -148,26 +149,150 @@ const Game = (() => {
             return;
         }
 
-        // Connections
+        // 2. Calculer les centres des secteurs pour les halos
+        const sectorCenters = {};
+        state.nodes.forEach(node => {
+            if (!sectorCenters[node.sector_id]) {
+                const sectorNodes = state.nodes.filter(n => n.sector_id === node.sector_id);
+                let avgX = 0, avgY = 0;
+                sectorNodes.forEach(sn => { avgX += sn.x; avgY += sn.y; });
+                sectorCenters[node.sector_id] = {
+                    x: avgX / sectorNodes.length,
+                    y: avgY / sectorNodes.length,
+                    color: node.sector_color
+                };
+            }
+        });
+
+        // 3. Dessiner les Halos de secteurs (toujours visibles)
+        Object.keys(sectorCenters).forEach(sid => {
+            const center = sectorCenters[sid];
+            ctx.save();
+            const grad = ctx.createRadialGradient(
+                center.x * s + offsetX, center.y * s + offsetY, 0,
+                center.x * s + offsetX, center.y * s + offsetY, 400 * s
+            );
+            grad.addColorStop(0, center.color + '15'); 
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(center.x * s + offsetX, center.y * s + offsetY, 400 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // 4. Dessiner les Connexions
         state.nodes.forEach(node => {
             node.connections.forEach(nid => {
                 if (nid > node.id) {
                     const target = state.nodes[nid];
                     if (!target) return;
                     const both = node.infected && target.infected;
-
-                    
                     ctx.beginPath();
                     if (both) {
-                        ctx.strokeStyle = '#8a4fff'; // Violet éclatant
-                        ctx.lineWidth = 2.5;
-                        ctx.setLineDash([]);
-                        ctx.shadowColor = '#8a4fff';
-                        ctx.shadowBlur = 10;
+                        ctx.strokeStyle = node.sector_color;
+                        ctx.lineWidth = 2.5 * s;
+                        ctx.shadowColor = node.sector_color; ctx.shadowBlur = 10 * s;
                     } else {
                         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                        ctx.lineWidth = 1.0;
-                        ctx.setLineDash([5, 5]); // Pointillés
+                        ctx.lineWidth = 1.0 * s;
+                        ctx.setLineDash([5, 5]);
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.moveTo(node.x * s + offsetX, node.y * s + offsetY);
+                    ctx.lineTo(target.x * s + offsetX, target.y * s + offsetY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.shadowBlur = 0;
+                }
+            });
+        });
+
+        // 5. Dessiner les Nœuds
+        state.nodes.forEach(node => {
+            const x = node.x * s + offsetX, y = node.y * s + offsetY;
+            const r = (node === hoveredNode ? 14 : 10) * s;
+
+            ctx.save();
+            if (node.infected) {
+                ctx.shadowColor = node.sector_color; ctx.shadowBlur = 20 * s;
+                ctx.fillStyle = node.sector_color;
+                ctx.beginPath();
+                if (node.is_gateway) {
+                    ctx.rect(x - r, y - r, r * 2, r * 2);
+                } else {
+                    ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath();
+                }
+                ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * s; ctx.stroke();
+            } else {
+                ctx.fillStyle = 'rgba(15, 15, 25, 0.8)';
+                ctx.strokeStyle = node.sector_color + '88';
+                ctx.lineWidth = 1.5 * s;
+                ctx.beginPath();
+                if (node.is_gateway) { ctx.rect(x - 7 * s, y - 7 * s, 14 * s, 14 * s); }
+                else { ctx.arc(x, y, 6 * s, 0, Math.PI * 2); }
+                ctx.fill(); ctx.stroke();
+            }
+
+            if (node === hoveredNode) {
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${12*s}px monospace`; ctx.textAlign = 'center';
+                ctx.fillText(node.sector_name, x, y - 28*s);
+                ctx.font = `${10*s}px monospace`;
+                ctx.fillText(node.is_gateway ? "GATEWAY" : `NODE_0x${node.id.toString(16)}`, x, y - 16*s);
+            }
+            ctx.restore();
+        });
+
+        Object.keys(sectorCenters).forEach(sId => {
+            const center = sectorCenters[sId];
+            if (!center.discovered) return;
+
+            // Find a node in this sector to get its color
+            const node = state.nodes.find(n => n.sector_id == sId);
+            if (!node) return;
+
+            ctx.save();
+            const grad = ctx.createRadialGradient(
+                center.x * s + offsetX, center.y * s + offsetY, 0,
+                center.x * s + offsetX, center.y * s + offsetY, 300 * s
+            );
+            grad.addColorStop(0, node.sector_color + '10'); // 10% opacity
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(center.x * s + offsetX, center.y * s + offsetY, 300 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // Connections
+        state.nodes.forEach(node => {
+            const center = sectorCenters[node.sector_id];
+            if (!center || !center.discovered) return;
+
+            node.connections.forEach(nid => {
+                if (nid > node.id) {
+                    const target = state.nodes[nid];
+                    if (!target) return;
+                    
+                    const targetCenter = sectorCenters[target.sector_id];
+                    if (!targetCenter || !targetCenter.discovered) return;
+
+                    const both = node.infected && target.infected;
+// ... (rest of connections logic)
+
+                    ctx.beginPath();
+                    if (both) {
+                        ctx.strokeStyle = node.sector_color;
+                        ctx.lineWidth = 2.5 * s;
+                        ctx.setLineDash([]);
+                        ctx.shadowColor = node.sector_color;
+                        ctx.shadowBlur = 10 * s;
+                    } else {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                        ctx.lineWidth = 1.0 * s;
+                        ctx.setLineDash([5, 5]);
                         ctx.shadowBlur = 0;
                     }
                     
@@ -182,42 +307,54 @@ const Game = (() => {
 
         // Nodes
         state.nodes.forEach(node => {
-            const x = node.x * s + offsetX, y = node.y * s + offsetY;
-            const r = (node === hoveredNode ? 12 : 9) * s;
+            const center = sectorCenters[node.sector_id];
+            if (!center || !center.discovered) return;
 
+            const x = node.x * s + offsetX, y = node.y * s + offsetY;
+            const r = (node === hoveredNode ? 14 : 10) * s;
+
+            ctx.save();
             if (node.infected) {
-                ctx.save();
-                ctx.shadowColor = '#8a4fff'; ctx.shadowBlur = 25 * s;
-                ctx.fillStyle = '#8a4fff';
-                // Diamant
-                ctx.beginPath(); 
-                ctx.moveTo(x, y - r); 
-                ctx.lineTo(x + r, y); 
-                ctx.lineTo(x, y + r); 
-                ctx.lineTo(x - r, y); 
-                ctx.closePath();
-                ctx.fill();
+                ctx.shadowColor = node.sector_color; ctx.shadowBlur = 20 * s;
+                ctx.fillStyle = node.sector_color;
                 
-                // Bordure blanche épaisse
+                ctx.beginPath();
+                if (node.is_gateway) {
+                    // Gateway is a large square/diamond
+                    ctx.rect(x - r, y - r, r * 2, r * 2);
+                } else {
+                    // Standard node is a diamond
+                    ctx.moveTo(x, y - r); 
+                    ctx.lineTo(x + r, y); 
+                    ctx.lineTo(x, y + r); 
+                    ctx.lineTo(x - r, y); 
+                    ctx.closePath();
+                }
+                ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2 * s;
                 ctx.stroke();
-                ctx.restore();
             } else {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.strokeStyle = node.sector_color + '44'; // 40% opacity border
                 ctx.lineWidth = 1 * s;
                 ctx.beginPath();
-                ctx.rect(x - 5*s, y - 5*s, 10*s, 10*s);
-                ctx.closePath();
+                if (node.is_gateway) {
+                    ctx.rect(x - 6 * s, y - 6 * s, 12 * s, 12 * s);
+                } else {
+                    ctx.rect(x - 5 * s, y - 5 * s, 10 * s, 10 * s);
+                }
                 ctx.fill();
                 ctx.stroke();
             }
 
             if (node === hoveredNode) {
-                ctx.fillStyle = '#fff'; ctx.font = `${10*s}px monospace`; ctx.textAlign = 'center';
-                ctx.fillText(`ID_0x${node.id.toString(16).toUpperCase()}`, x, y - 18*s);
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${11*s}px monospace`; ctx.textAlign = 'center';
+                ctx.fillText(node.sector_name, x, y - 25*s);
+                ctx.font = `${9*s}px monospace`;
+                ctx.fillText(node.is_gateway ? "GATEWAY_PXV" : `NODE_0x${node.id.toString(16)}`, x, y - 14*s);
             }
+            ctx.restore();
         });
 
         // Scan highlight: ring around detected infected nodes
@@ -305,6 +442,10 @@ const Game = (() => {
 
         // Check nodes (increased hit zone to 20)
         for (const n of state.nodes) {
+            // Un secteur est découvert s'il contient au moins un infecté ou si l'upgrade Scanner est actif
+            const isDiscovered = state.reveal_sectors || state.nodes.some(node => node.sector_id === n.sector_id && node.infected);
+            if (!isDiscovered) continue;
+
             if (Math.hypot(x - (n.x * s + offsetX), y - (n.y * s + offsetY)) < 20 * s) {
                 hoveredNode = n; canvas.style.cursor = 'pointer'; return;
             }

@@ -109,10 +109,16 @@ const Terminal = (() => {
         if (!up) { print(`[ERROR] Module '${target}' introuvable.`, "error"); return; }
         
         // Empêcher l'achat si déjà acquis
-        if (Game.getState()?.purchased_upgrades.includes(up.id)) {
+        const s = Game.getState();
+        if (s?.purchased_upgrades.includes(up.id)) {
             print(`[INFO] Module '${up.name}' déjà injecté.`, "system");
             return;
         }
+
+        // Calcul du coût avec bonus éventuels
+        let finalCost = up.cost;
+        // Si l'upgrade est de type gateway et qu'on a un discount (exemple théorique pour extensions futures)
+        // ... (logique à adapter selon besoin spécifique)
 
         print(`[WAIT] Initialisation de l'injection du module '${up.name}'...`);
         let prog = 0;
@@ -133,6 +139,12 @@ const Terminal = (() => {
         out += `CPU      : \x1b[1;33m${Math.floor(s.cpu_cycles)}\x1b[0m Cycles\n`;
         out += `Méfiance : \x1b[1;31m${Math.floor(s.suspicion)}%\x1b[0m\n`;
         out += `Réseau   : ${s.infected_count}/${s.total_nodes} compromis\n`;
+        
+        // Stats de secteurs
+        const discovered = new Set(s.nodes.filter(n => n.infected).map(n => n.sector_id)).size;
+        out += `Secteurs : ${discovered}/17 découverts\n`;
+        if (s.porosity_mod > 0) out += `Porosité : +${(s.porosity_mod*100).toFixed(0)}% (SIGNAL_BOOST)\n`;
+        
         print(out, 'system');
     }
 

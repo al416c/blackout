@@ -1,0 +1,45 @@
+<h2>Agencement des 17 Secteurs</h2>
+<p class="subtitle">Comment organiser cette méga-structure réseau ?</p>
+
+<div class="split">
+  <div class="card" data-choice="grid" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:150px; display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:10px;">
+        <div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div>
+        <div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div>
+        <div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div>
+        <div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div><div style="border:1px solid #333; border-radius:3px;"></div>
+    </div>
+    <div class="card-body">
+      <h3>Grille Matrix (4x4+)</h3>
+      <p>Structure très ordonnée, typique d'un datacenter. Très lisible mais moins "naturel".</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="honeycomb" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:150px; position:relative; overflow:hidden;">
+        <!-- Simple representation of hex-like layout -->
+        <div style="position:absolute; width:30px; height:30px; border:1px solid #00f2ff; top:20%; left:20%; border-radius:50%;"></div>
+        <div style="position:absolute; width:30px; height:30px; border:1px solid #8a4fff; top:20%; left:45%; border-radius:50%;"></div>
+        <div style="position:absolute; width:30px; height:30px; border:1px solid #00ff99; top:45%; left:32%; border-radius:50%;"></div>
+        <div style="position:absolute; width:30px; height:30px; border:1px solid #ff0055; top:45%; left:57%; border-radius:50%;"></div>
+    </div>
+    <div class="card-body">
+      <h3>Ruche Organique</h3>
+      <p>Placement hexagonal compact. Optimise l'espace du canvas et permet beaucoup de connexions entre voisins.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="dense-city" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:150px; padding:10px;">
+       <div style="width:100%; height:100%; border:1px dashed #444; border-radius:50%; position:relative;">
+          <div style="position:absolute; width:15px; height:15px; background:#fff; top:50%; left:50%; border-radius:50%;"></div>
+          <div style="position:absolute; width:8px; height:8px; background:#8a4fff; top:20%; left:20%; border-radius:50%;"></div>
+          <div style="position:absolute; width:8px; height:8px; background:#00f2ff; top:80%; left:80%; border-radius:50%;"></div>
+       </div>
+    </div>
+    <div class="card-body">
+      <h3>Radial (Centre & Périphérie)</h3>
+      <p>Un cœur de serveurs ultra-protégés au centre, entouré de 16 secteurs périphériques (RH, Web, etc.).</p>
+    </div>
+  </div>
+</div>

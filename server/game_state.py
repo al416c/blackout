@@ -1,14 +1,16 @@
 """
 Etat de session de jeu — topologie reseau, noeuds, infection, rooms duo.
 """
-
 import json
 import random
 import math
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 MALWARE_PROFILES = {
     "worm":       {"propagation": 0.20, "noise_per_machine": 1.5,  "income_per_node": 3.0, "start_infected": 2},
     "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5,  "income_per_node": 3.5, "start_infected": 1},
@@ -16,6 +18,7 @@ MALWARE_PROFILES = {
     "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 2.5, "start_infected": 1},
 }
 
+<<<<<<< HEAD
 # Zones disposées sur la carte (cx/cy en coordonnées canvas, r = rayon d'affichage)
 ZONES_CONFIG = [
     {
@@ -72,6 +75,8 @@ class Zone:
         return asdict(self)
 
 
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 @dataclass
 class Node:
     id: int
@@ -81,46 +86,65 @@ class Node:
     quarantined: bool = False
     honeypot: bool = False
     connections: list[int] = field(default_factory=list)
+<<<<<<< HEAD
     zone_id: int = 0
     is_router: bool = False
     node_type: str = "workstation"  # "workstation" | "router"
+=======
+    sector_id: int = 0
+    sector_name: str = "SEC_0x00"
+    sector_color: str = "#ffffff"
+    is_gateway: bool = False
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 
     def to_dict(self):
         return asdict(self)
 
-
 @dataclass
 class Bubble:
-    """Bulle cliquable sur la carte."""
     id: int
     x: float
     y: float
+<<<<<<< HEAD
     kind: str   # "breach", "exfiltration" (Red), "log_analysis", "patch_deploy" (Blue)
     value: int
     ttl: int = 5
 
+=======
+    kind: str
+    value: int
+    ttl: int = 5
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     def to_dict(self):
         return asdict(self)
 
-
 @dataclass
 class GameState:
+<<<<<<< HEAD
     """Represente l'etat complet d'une partie (solo ou duo)."""
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     party_id: Optional[int] = None
     user_id: int = 0
     malware_class: str = "worm"
     difficulty: str = "normal"
+<<<<<<< HEAD
     mode: str = "solo"
 
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     tick: int = 0
     nodes: list[Node] = field(default_factory=list)
     zones: list[Zone] = field(default_factory=list)
     total_nodes: int = 0
+<<<<<<< HEAD
 
     # Ressources Red Team
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     cpu_cycles: float = 50.0
-    # Ressources Blue Team
     it_budget: float = 50.0
+<<<<<<< HEAD
 
     suspicion: float = 0.0
     patch_deployed: bool = False
@@ -128,19 +152,36 @@ class GameState:
 
     purchased_upgrades: list[int] = field(default_factory=list)
 
+=======
+    suspicion: float = 0.0
+    patch_deployed: bool = False
+    clean_rate: float = 0.0
+    purchased_upgrades: list[int] = field(default_factory=list)
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     propagation_mod: float = 0.0
     stealth_mod: float = 0.0
     income_mod: float = 0.0
     passive_income_bonus: float = 0.0
+<<<<<<< HEAD
 
     bubbles: list[Bubble] = field(default_factory=list)
     next_bubble_id: int = 1
 
+=======
+    porosity_mod: float = 0.0
+    gateway_discount: float = 0.0
+    reveal_sectors: bool = False
+    bubbles: list[Bubble] = field(default_factory=list)
+    next_bubble_id: int = 1
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     triggered_events: list[int] = field(default_factory=list)
     quarantine_last_tick: int = 0
     special_cooldown: int = 0
     command_cooldowns: dict = field(default_factory=dict)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     result: Optional[str] = None
     score: int = 0
 
@@ -152,10 +193,13 @@ class GameState:
     def healthy_count(self) -> int:
         return sum(1 for n in self.nodes if not n.infected and not n.quarantined)
 
+<<<<<<< HEAD
     @property
     def quarantined_count(self) -> int:
         return sum(1 for n in self.nodes if n.quarantined)
 
+=======
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
     def to_dict(self) -> dict:
         return {
             "tick": self.tick,
@@ -166,14 +210,10 @@ class GameState:
             "total_nodes": self.total_nodes,
             "infected_count": self.infected_count,
             "healthy_count": self.healthy_count,
-            "quarantined_count": self.quarantined_count,
             "cpu_cycles": round(self.cpu_cycles, 1),
-            "it_budget": round(self.it_budget, 1),
             "suspicion": round(self.suspicion, 2),
-            "patch_deployed": self.patch_deployed,
             "purchased_upgrades": self.purchased_upgrades,
             "bubbles": [b.to_dict() for b in self.bubbles],
-            "special_cooldown": self.special_cooldown,
             "result": self.result,
             "score": self.score,
         }
@@ -181,6 +221,7 @@ class GameState:
     def to_json(self) -> str:
         return json.dumps(self.to_dict())
 
+<<<<<<< HEAD
 
 @dataclass
 class DuoRoom:
@@ -307,6 +348,57 @@ def create_new_game(user_id: int, malware_class: str, num_nodes: int = 30, mode:
     dmz_regular = [nid for nid in dmz_zone.node_ids if not nodes[nid].is_router]
     start_count = min(profile["start_infected"], len(dmz_regular))
     for idx in random.sample(dmz_regular, start_count):
-        state.nodes[idx].infected = True
+=======
+def generate_network(num_sectors: int = 17) -> list[Node]:
+    nodes = []
+    sector_centers = []
+    NEON_COLORS = ["#8a4fff", "#00f2ff", "#00ff99", "#ff0055", "#ff9900", "#ffcc00", "#4488ff", "#ff44cc"]
+    for i in range(num_sectors):
+        sector_centers.append((random.uniform(200, 3300), random.uniform(200, 2300)))
+    
+    node_id_counter = 0
+    gateways = {}
+    for s_id, (cx, cy) in enumerate(sector_centers):
+        num = random.randint(4, 7)
+        color = NEON_COLORS[s_id % len(NEON_COLORS)]
+        sector_nodes = []
+        for j in range(num):
+            node = Node(
+                id=node_id_counter, 
+                x=round(cx + random.uniform(-150, 150), 1),
+                y=round(cy + random.uniform(-150, 150), 1),
+                sector_id=s_id,
+                sector_name=f"SEC_0x{s_id:02X}",
+                sector_color=color,
+                is_gateway=(j == 0)
+            )
+            nodes.append(node)
+            sector_nodes.append(node)
+            if node.is_gateway:
+                gateways[s_id] = node
+            node_id_counter += 1
+        
+        for k in range(len(sector_nodes)):
+            for l in range(k + 1, len(sector_nodes)):
+                if random.random() < 0.6:
+                    sector_nodes[k].connections.append(sector_nodes[l].id)
+                    sector_nodes[l].connections.append(sector_nodes[k].id)
+    
+    for s_id, gw in gateways.items():
+        others = sorted([ogw for oid, ogw in gateways.items() if oid != s_id], 
+                        key=lambda o: math.hypot(gw.x - o.x, gw.y - o.y))
+        for neighbor in others[:2]:
+            if neighbor.id not in gw.connections:
+                gw.connections.append(neighbor.id)
+                neighbor.connections.append(gw.id)
+    return nodes
 
+def create_new_game(user_id: int, malware_class: str, num_nodes: int = 100) -> GameState:
+    profile = MALWARE_PROFILES.get(malware_class, MALWARE_PROFILES["worm"])
+    nodes = generate_network(17)
+    state = GameState(user_id=user_id, malware_class=malware_class, total_nodes=len(nodes), nodes=nodes)
+    start_indices = random.sample(range(len(nodes)), profile["start_infected"])
+    for idx in start_indices:
+>>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
+        state.nodes[idx].infected = True
     return state
