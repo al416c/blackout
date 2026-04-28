@@ -1,0 +1,71 @@
+<h2>Agencement des 17 Secteurs</h2>
+<p class="subtitle">Choisissez la structure de la carte pour BLACKOUT</p>
+
+<div class="cards">
+  <div class="card" data-choice="grid" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:180px; display:grid; grid-template-columns:repeat(5,1fr); gap:8px; padding:15px; border:1px solid #1a1a2a;">
+        <!-- Simulation d'une grille 17 secteurs -->
+        <div style="background:rgba(0, 242, 255, 0.1); border:1px solid #00f2ff; border-radius:4px;"></div>
+        <div style="background:rgba(138, 79, 255, 0.1); border:1px solid #8a4fff; border-radius:4px;"></div>
+        <div style="background:rgba(0, 255, 153, 0.1); border:1px solid #00ff99; border-radius:4px;"></div>
+        <div style="background:rgba(255, 0, 85, 0.1); border:1px solid #ff0055; border-radius:4px;"></div>
+        <div style="background:rgba(255, 153, 0, 0.1); border:1px solid #ff9900; border-radius:4px;"></div>
+        <div style="background:rgba(0, 242, 255, 0.1); border:1px solid #00f2ff; border-radius:4px;"></div>
+        <div style="background:rgba(138, 79, 255, 0.1); border:1px solid #8a4fff; border-radius:4px;"></div>
+        <div style="background:rgba(0, 255, 153, 0.1); border:1px solid #00ff99; border-radius:4px;"></div>
+        <div style="background:rgba(255, 0, 85, 0.1); border:1px solid #ff0055; border-radius:4px;"></div>
+        <div style="background:rgba(255, 153, 0, 0.1); border:1px solid #ff9900; border-radius:4px;"></div>
+        <div style="background:rgba(0, 242, 255, 0.1); border:1px solid #00f2ff; border-radius:4px;"></div>
+        <div style="background:rgba(138, 79, 255, 0.1); border:1px solid #8a4fff; border-radius:4px;"></div>
+        <div style="background:rgba(0, 255, 153, 0.1); border:1px solid #00ff99; border-radius:4px;"></div>
+        <div style="background:rgba(255, 0, 85, 0.1); border:1px solid #ff0055; border-radius:4px;"></div>
+        <div style="background:rgba(255, 153, 0, 0.1); border:1px solid #ff9900; border-radius:4px;"></div>
+        <div style="background:rgba(0, 242, 255, 0.1); border:1px solid #00f2ff; border-radius:4px;"></div>
+        <div style="background:rgba(138, 79, 255, 0.1); border:1px solid #8a4fff; border-radius:4px;"></div>
+    </div>
+    <div class="card-body">
+      <h3>A. Grille Data-Center</h3>
+      <p>Organisation par rangées. Très clair, idéal pour une gestion méthodique du réseau.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="radial" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:180px; position:relative; overflow:hidden; border:1px solid #1a1a2a; display:flex; align-items:center; justify-content:center;">
+        <!-- Centre -->
+        <div style="width:40px; height:40px; background:#fff; border-radius:50%; box-shadow:0 0 20px #fff; z-index:5;"></div>
+        <!-- Couches -->
+        <div style="position:absolute; width:100px; height:100px; border:1px dashed rgba(255,255,255,0.2); border-radius:50%;"></div>
+        <div style="position:absolute; width:160px; height:160px; border:1px dashed rgba(255,255,255,0.1); border-radius:50%;"></div>
+        <!-- Secteurs périphériques (représentation) -->
+        <div style="position:absolute; top:20%; left:20%; width:15px; height:15px; background:#8a4fff; border-radius:50%;"></div>
+        <div style="position:absolute; top:20%; right:20%; width:15px; height:15px; background:#00f2ff; border-radius:50%;"></div>
+        <div style="position:absolute; bottom:20%; left:20%; width:15px; height:15px; background:#00ff99; border-radius:50%;"></div>
+        <div style="position:absolute; bottom:20%; right:20%; width:15px; height:15px; background:#ff0055; border-radius:50%;"></div>
+    </div>
+    <div class="card-body">
+      <h3>B. La Citadelle (Radial)</h3>
+      <p>Un cœur ultra-sécurisé au centre. On attaque par les bords pour s'infiltrer vers le milieu.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="organic" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#050608; height:180px; position:relative; overflow:hidden; border:1px solid #1a1a2a;">
+        <svg width="100%" height="100%" viewBox="0 0 200 200">
+            <!-- Cercles aléatoires reliés -->
+            <circle cx="50" cy="50" r="15" fill="rgba(138, 79, 255, 0.2)" stroke="#8a4fff" />
+            <circle cx="90" cy="40" r="12" fill="rgba(0, 242, 255, 0.2)" stroke="#00f2ff" />
+            <circle cx="140" cy="60" r="18" fill="rgba(0, 255, 153, 0.2)" stroke="#00ff99" />
+            <circle cx="60" cy="100" r="14" fill="rgba(255, 0, 85, 0.2)" stroke="#ff0055" />
+            <circle cx="110" cy="110" r="20" fill="rgba(255, 153, 0, 0.2)" stroke="#ff9900" />
+            <line x1="50" y1="50" x2="90" y2="40" stroke="#444" />
+            <line x1="90" y1="40" x2="140" y2="60" stroke="#444" />
+            <line x1="50" y1="50" x2="60" y2="100" stroke="#444" />
+            <line x1="60" y1="100" x2="110" y2="110" stroke="#444" />
+        </svg>
+    </div>
+    <div class="card-body">
+      <h3>C. Réseau Organique</h3>
+      <p>Clusters distribués aléatoirement. Donne l'impression d'un vrai réseau internet maillé.</p>
+    </div>
+  </div>
+</div>

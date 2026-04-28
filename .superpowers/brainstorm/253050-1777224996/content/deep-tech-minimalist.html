@@ -1,0 +1,192 @@
+<style>
+  :root {
+    --deep-gray: #0d0e12;
+    --nebula-purple: #8a4fff;
+    --ui-cyan: #00f2ff;
+    --bg-accent: #15171e;
+    --glass-panel: rgba(18, 20, 28, 0.9);
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  body {
+    background-color: var(--deep-gray);
+    /* Motif géométrique aléatoire statique en fond */
+    background-image: 
+      radial-gradient(circle at 10% 10%, rgba(255,255,255,0.02) 0%, transparent 20%),
+      linear-gradient(30deg, var(--deep-gray) 12%, transparent 12.5%, transparent 87%, var(--deep-gray) 87.5%, var(--deep-gray)),
+      linear-gradient(150deg, var(--deep-gray) 12%, transparent 12.5%, transparent 87%, var(--deep-gray) 87.5%, var(--deep-gray)),
+      linear-gradient(30deg, var(--deep-gray) 12%, transparent 12.5%, transparent 87%, var(--deep-gray) 87.5%, var(--deep-gray)),
+      linear-gradient(150deg, var(--deep-gray) 12%, transparent 12.5%, transparent 87%, var(--deep-gray) 87.5%, var(--deep-gray)),
+      linear-gradient(60deg, #161821 25%, transparent 25.5%, transparent 75%, #161821 75%, #161821),
+      linear-gradient(60deg, #161821 25%, transparent 25.5%, transparent 75%, #161821 75%, #161821);
+    background-size: 80px 140px;
+    color: #cbd5e0;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .game-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 20px;
+    gap: 15px;
+    box-sizing: border-box;
+  }
+
+  /* Header / HUD */
+  .hud {
+    display: flex;
+    gap: 20px;
+    height: 60px;
+  }
+
+  .hud-item {
+    background: var(--glass-panel);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 10px 20px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .label { font-size: 9px; color: var(--ui-cyan); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 2px; }
+  .value { font-size: 1.2rem; font-family: var(--font-mono); color: #fff; }
+
+  /* Compact Suspicion Bar (Blue Team Detection) */
+  .suspicion-container {
+    flex: 1;
+    max-width: 400px;
+    background: var(--glass-panel);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 4px;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .suspicion-meta { display: flex; justify-content: space-between; align-items: baseline; }
+  
+  .suspicion-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.03);
+    margin-top: 8px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .suspicion-fill {
+    height: 100%;
+    width: 34%;
+    background: var(--nebula-purple);
+    box-shadow: 0 0 10px var(--nebula-purple);
+  }
+
+  /* Network Area */
+  .network-map {
+    flex: 1;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Node Styling: Purple & Tech */
+  .node {
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--nebula-purple);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 15px var(--nebula-purple);
+  }
+  
+  .node.uninfected {
+    background: #333;
+    clip-path: none;
+    border-radius: 2px;
+    width: 10px; height: 10px;
+    box-shadow: none;
+    opacity: 0.5;
+  }
+
+  .connection {
+    position: absolute;
+    stroke: var(--nebula-purple);
+    stroke-width: 1;
+    opacity: 0.2;
+  }
+
+  /* Terminal */
+  .terminal {
+    height: 200px;
+    background: #090a0f;
+    border: 1px solid rgba(0, 242, 255, 0.15);
+    border-radius: 4px;
+    padding: 15px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .term-header { font-size: 10px; color: var(--ui-cyan); margin-bottom: 10px; opacity: 0.7; }
+  .term-content { flex: 1; color: #a0aec0; }
+  .term-input { color: #fff; margin-top: 10px; }
+  .cursor { display: inline-block; width: 8px; height: 15px; background: var(--ui-cyan); vertical-align: middle; animation: blink 1s infinite; }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+</style>
+
+<div class="game-container">
+  <div class="hud">
+    <div class="hud-item">
+      <div class="label">Hardware ID</div>
+      <div class="value">BLK-01</div>
+    </div>
+    
+    <div class="suspicion-container">
+      <div class="suspicion-meta">
+        <div class="label">BlueTeam Trace Progress</div>
+        <div class="value" style="font-size: 1rem; color: var(--nebula-purple);">34.8%</div>
+      </div>
+      <div class="suspicion-bar-bg">
+        <div class="suspicion-fill"></div>
+      </div>
+    </div>
+
+    <div class="hud-item">
+      <div class="label">Cycle Reserves</div>
+      <div class="value" style="color: var(--ui-cyan);">4,102</div>
+    </div>
+  </div>
+
+  <div class="network-map">
+    <div class="node" style="top: 30%; left: 25%;"></div>
+    <div class="node" style="top: 55%; left: 40%;"></div>
+    <div class="node uninfected" style="top: 20%; left: 60%;"></div>
+    <div class="node uninfected" style="top: 75%; left: 30%;"></div>
+    <div class="node uninfected" style="top: 45%; left: 70%;"></div>
+
+    <svg style="position:absolute; width:100%; height:100%; pointer-events:none;">
+      <line x1="25%" y1="30%" x2="40%" y2="55%" class="connection" style="opacity:0.4; stroke-width:2;" />
+      <line x1="40%" y1="55%" x2="60%" y2="20%" class="connection" style="stroke: #333;" />
+    </svg>
+  </div>
+
+  <div class="terminal">
+    <div class="term-header">SESSION_ESTABLISHED // TARGET: SUB_NET_ALPHA</div>
+    <div class="term-content">
+      <div>[LOG] Vector expansion successful in Sector A.</div>
+      <div>[LOG] Monitoring incoming data packets...</div>
+      <div style="color: var(--nebula-purple);">[ALERT] BlueTeam heuristic engine status: ACTIVE</div>
+    </div>
+    <div class="term-input">
+      <span style="color: var(--ui-cyan);">></span> install net_scanner --silent<span class="cursor"></span>
+    </div>
+  </div>
+</div>

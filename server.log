@@ -1,0 +1,4 @@
+  File "/home/mateo/VS code/blackout/blackout/server/main.py", line 6
+    , json, os, mimetypes, sys
+    ^
+SyntaxError: invalid syntax

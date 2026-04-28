@@ -90,7 +90,7 @@ def init_db():
 
     # Seed / reseed upgrade data si le nombre d'entrées a changé
     count_up = cur.execute("SELECT COUNT(*) FROM upgrade").fetchone()[0]
-    if count_up < 32:  # force reseed si les données ont changé
+    if count_up < 33:  # force reseed si les données ont changé
         cur.execute("DELETE FROM upgrade")
         _seed_upgrades(cur)
         conn.commit()
@@ -302,6 +302,21 @@ def _seed_upgrades(cur: sqlite3.Cursor):
          0.35,
          "Le rootkit devient quasi invisible à tout outil de détection — furtivité maximale."),
 
+        # ── Pénétration Réseau (NOUVEAU) ──
+        ("Scanner de Fréquence", "penetration", 1, 60,
+         {"reveal_sectors": True},
+         0.00,
+         "Révèle les secteurs adjacents et les Gateways à proximité."),
+
+        ("Exploit de Passerelle", "penetration", 2, 150,
+         {"gateway_discount": 0.40},
+         0.05,
+         "Réduit de 40% le coût en CPU pour forcer l'infection d'une Gateway."),
+
+        ("Antenne Longue Portée", "penetration", 3, 250,
+         {"porosity_bonus": 0.04},
+         0.10,
+         "Augmente la probabilité de propagation inter-secteur (porosité) de +4%."),
     ]
     for name, branch, tier, cost, effect, stealth, desc in upgrades:
         cur.execute(

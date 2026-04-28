@@ -27,6 +27,7 @@ const WS = (() => {
         socket.addEventListener('message', (event) => {
             try {
                 const data = JSON.parse(event.data);
+                console.log("[WS] RECEIVED:", data.type); // DEBUG
                 emit(data.type, data);
             } catch (e) {
                 console.error('[WS] Message invalide:', e);
