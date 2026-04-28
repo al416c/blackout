@@ -23,23 +23,42 @@ const Upgrades = (() => {
     function updatePurchased(ids) { purchasedIds = ids || []; }
 
     function getAvailableModulesText() {
-        if (allUpgrades.length === 0) return "UPLINK_ERROR: No modules found.";
+        if (allUpgrades.length === 0) {
+            loadUpgrades();
+            return "UPLINK_ERROR: No modules found. Synchronizing with central database...";
+        }
         let out = `\n${BOLD}═══ MODULES D'ÉVOLUTION ═══${RESET}\n\n`;
         const branches = {};
         allUpgrades.forEach(u => { if (!branches[u.branch]) branches[u.branch] = []; branches[u.branch].push(u); });
 
+        // Header for the table
+        const HEADER = `${BOLD}${"ID".padEnd(4)} ${"NOM DU MODULE".padEnd(25)} ${"PRIX".padEnd(10)} ${"DESCRIPTION"}${RESET}\n`;
+        const SEP    = `${DIM}${"".padEnd(80, "─")}${RESET}\n`;
+
         for (const [branch, upgrades] of Object.entries(branches)) {
             const color = BRANCH_COLORS[branch] || RESET;
             out += `${color}--- ${BRANCH_LABELS[branch].toUpperCase()} ---${RESET}\n`;
+            out += HEADER;
+            out += SEP;
+            
             upgrades.sort((a, b) => a.tier - b.tier).forEach(u => {
                 const purchased = purchasedIds.includes(u.id);
                 const prevTierOwned = u.tier <= 1 || upgrades.find(x => x.tier === u.tier-1 && purchasedIds.includes(x.id));
                 const locked = !purchased && !prevTierOwned;
-                const idStr = `[${u.id.toString().padStart(2, '0')}]`;
+                
+                const idStr = u.id.toString().padStart(2, '0');
                 const nameStr = u.name.padEnd(25);
-                if (purchased) out += `${DIM}${idStr} ${nameStr} [ACQUIS]${RESET}\n`;
-                else if (locked) out += `${DIM}${idStr} ${nameStr} [VERROUILLÉ]${RESET}\n`;
-                else out += `${BOLD}${idStr}${RESET} ${nameStr} ${u.cost} CPU\n     ${DIM}> install ${u.id}${RESET}\n`;
+                const priceStr = purchased ? "ACQUIS" : (locked ? "VERROUILLÉ" : `${u.cost} CPU`).padEnd(10);
+                const desc = u.description || "Aucune description disponible.";
+
+                if (purchased) {
+                    out += `${DIM}[${idStr}] ${nameStr} ${priceStr.padEnd(10)} ${desc}${RESET}\n`;
+                } else if (locked) {
+                    out += `${DIM}[${idStr}] ${nameStr} ${priceStr.padEnd(10)} ${desc}${RESET}\n`;
+                } else {
+                    out += `${BOLD}[${idStr}]${RESET} ${nameStr} ${BOLD}${priceStr}${RESET} ${desc}\n`;
+                    out += `     ${DIM}> install ${u.id}${RESET}\n`;
+                }
             });
             out += "\n";
         }
