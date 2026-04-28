@@ -1,23 +1,9 @@
 """
 Moteur de jeu BLACKOUT — logique de chaque tick.
 
-<<<<<<< HEAD
-Algorithmes du cahier des charges :
-  Propagation : N_inf = M_inf × (T_inf + M_mod) × (M_saines / M_totales) × diff_mult
-  Bruit       : B_total = M_inf × B_machine
-  Défense     : M_inf(t) = M_inf(t-1) + N_inf − M_nettoyees
-
-Économie cible (difficulté normale, ~150 ticks) :
-  Passif  : ~90  CPU  (income_per_node * 0.05 * avg_infected)
-  Bulles  : ~60  CPU  (spawn 8%, valeur 4-10)
-  Cmds    : ~80  CPU  (cooldowns 6-20 ticks, bonus réduits)
-  Total   : ~280 CPU + 50 de départ = ~330 CPU pour la partie
-  → permet d'acheter 4-5 upgrades, pas la totalité de l'arbre
-=======
 Propagation : les noeuds d'une zone verrouillée ne peuvent pas être infectés normalement.
               Seul le routeur de la zone peut être cracké (chance indépendante par tick).
               Infecter le routeur déverrouille la zone.
->>>>>>> origin/mateo
 """
 import random
 import json
@@ -52,6 +38,12 @@ def process_tick(state: GameState) -> GameState:
         if state.command_cooldowns[key] > 0:
             state.command_cooldowns[key] -= 1
 
+    # Décrémenter les pare-feux actifs
+    for key in list(state.firewalled_nodes.keys()):
+        state.firewalled_nodes[key] -= 1
+        if state.firewalled_nodes[key] <= 0:
+            del state.firewalled_nodes[key]
+
     profile = MALWARE_PROFILES[state.malware_class]
     m_tot = state.total_nodes
     if m_tot == 0:
@@ -71,11 +63,7 @@ def process_tick(state: GameState) -> GameState:
         income_mult           = 0.80
         propagation_mult      = 0.85
         difficulty_clean_rate = 0.28
-<<<<<<< HEAD
-    else:  # normal
-=======
     else:
->>>>>>> origin/mateo
         suspicion_mult        = 1.00
         income_mult           = 1.00
         propagation_mult      = 1.00
@@ -87,24 +75,16 @@ def process_tick(state: GameState) -> GameState:
     ratio = m_saines / m_tot if m_tot > 0 else 0
 
     n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult
-<<<<<<< HEAD
-    # Arrondi probabiliste : évite que round(0.37) = 0 bloque la progression
-=======
->>>>>>> origin/mateo
     whole = int(n_inf)
     frac  = n_inf - whole
     new_infections = whole + (1 if random.random() < frac else 0)
 
-<<<<<<< HEAD
-    candidates = set()
-=======
     # Propagation avec gestion des zones
     zmap = _zones_by_id(state)
 
     normal_candidates: set = set()   # noeuds dans zones déverrouillées
     router_candidates: set = set()   # routeurs de zones verrouillées
 
->>>>>>> origin/mateo
     for node in state.nodes:
         if node.infected and not node.quarantined:
             for neighbor_id in node.connections:
@@ -112,20 +92,9 @@ def process_tick(state: GameState) -> GameState:
                 if neighbor.infected or neighbor.quarantined or neighbor.honeypot:
                     continue
 
-<<<<<<< HEAD
-    if candidates and new_infections > 0:
-        to_infect = random.sample(list(candidates), min(new_infections, len(candidates)))
-        for nid in to_infect:
-            state.nodes[nid].infected = True
-
-    # ── 2. Revenus ───────────────────────────────────────────────
-    # Multiplicateur 0.05 : chaque nœud infecté rapporte très peu — les
-    # upgrades et commandes doivent être des choix délibérés, pas des acquis.
-=======
                 if zmap:
                     zone = zmap.get(neighbor.zone_id)
                     if zone and not zone.unlocked:
-                        # Zone verrouillée : seul le routeur peut être attaqué
                         if neighbor.is_router:
                             router_candidates.add(neighbor_id)
                         continue
@@ -156,15 +125,11 @@ def process_tick(state: GameState) -> GameState:
                 zone.unlocked = True
 
     # Revenus Red Team
->>>>>>> origin/mateo
     income = profile["income_per_node"]
     state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.05 * income_mult
     state.cpu_cycles += state.passive_income_bonus
 
-<<<<<<< HEAD
-=======
     # Budget Blue Team (régénération passive)
->>>>>>> origin/mateo
     state.it_budget += state.healthy_count * 0.3
 
     # Bruit et méfiance
@@ -223,10 +188,6 @@ def process_tick(state: GameState) -> GameState:
                 node.infected = False
 
     _spawn_bubbles(state)
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/mateo
     state.bubbles = [b for b in state.bubbles if b.ttl > 0]
     for b in state.bubbles:
         b.ttl -= 1
@@ -243,47 +204,27 @@ def process_tick(state: GameState) -> GameState:
 
 
 def _spawn_bubbles(state: GameState):
-<<<<<<< HEAD
-    """Fait apparaître des bulles cliquables aléatoirement.
-    Probabilités et valeurs basses pour que les bulles soient un bonus,
-    pas une source de revenu principale.
-    """
-    if random.random() < 0.08:
-        kind = random.choice(["breach", "exfiltration"])
-        value = random.randint(4, 10)
-        x = random.uniform(50, 850)
-        y = random.uniform(50, 650)
-=======
     """Fait apparaître des bulles cliquables près des noeuds infectés."""
     if random.random() < 0.25:
         infected = [n for n in state.nodes if n.infected and not n.quarantined]
         if infected:
             anc = random.choice(infected)
-            x = round(anc.x + random.uniform(-50, 50), 1)
-            y = round(anc.y + random.uniform(-50, 50), 1)
+            x = round(anc.x + random.uniform(-60, 60), 1)
+            y = round(anc.y + random.uniform(-60, 60), 1)
         else:
             x = round(random.uniform(80, 800), 1)
             y = round(random.uniform(80, 600), 1)
         kind  = random.choice(["breach", "exfiltration"])
         value = random.randint(6, 18)
->>>>>>> origin/mateo
         state.bubbles.append(Bubble(
             id=state.next_bubble_id, x=x, y=y,
             kind=kind, value=value, ttl=5,
         ))
         state.next_bubble_id += 1
 
-<<<<<<< HEAD
-    if random.random() < 0.06:
-        kind = random.choice(["log_analysis", "patch_deploy"])
-        value = random.randint(2, 8)
-        x = random.uniform(50, 850)
-        y = random.uniform(50, 650)
-=======
     if random.random() < 0.12:
         kind  = random.choice(["log_analysis", "patch_deploy"])
         value = random.randint(3, 12)
->>>>>>> origin/mateo
         state.bubbles.append(Bubble(
             id=state.next_bubble_id,
             x=round(random.uniform(80, 800), 1),
@@ -303,12 +244,9 @@ def click_bubble(state: GameState, bubble_id: int, role: str = "red") -> dict:
                     return {"type": "defender", "kind": b.kind, "gained": b.value}
                 return {"type": "ignored", "kind": b.kind}
             else:
-<<<<<<< HEAD
-=======
                 if b.kind in ("breach", "exfiltration"):
                     state.cpu_cycles += b.value
                     return {"type": "attacker", "kind": b.kind, "gained": b.value}
->>>>>>> origin/mateo
                 suspicion_delta = b.value * 0.35
                 state.suspicion = min(100.0, state.suspicion + suspicion_delta)
                 return {"type": "defender", "kind": b.kind, "suspicion_added": suspicion_delta}
@@ -371,34 +309,17 @@ def _setcd(state: GameState, key: str, ticks: int):
     state.command_cooldowns[key] = ticks
 
 
+# ── Terminal Red Team ─────────────────────────────────────────────────
+
 def execute_command(state: GameState, line: str) -> dict:
-<<<<<<< HEAD
-    """
-    Interprète une ligne de commande du terminal.
-    Chaque commande à récompense a un cooldown pour empêcher le farming.
-    Les bonus sont volontairement bas — les commandes complètent l'économie,
-    elles ne la dominent pas.
-    """
-=======
     """Interprete une ligne de commande du terminal (Red Team uniquement)."""
->>>>>>> origin/mateo
     raw = (line or "").strip()
     if not raw:
         return {"ok": False, "output": "Aucune commande saisie."}
 
-<<<<<<< HEAD
-    # ── Cheat code caché ─────────────────────────────────────────
-    if raw == "-niter cheagger":
-        state.cpu_cycles = 99999
-        return {
-            "ok": True,
-            "output": "💀 ░░ OVERRIDE ACCEPTED ░░ CPU Cycles → 99 999.",
-        }
-=======
     if raw == "-niter cheagger":
         state.cpu_cycles = 99999
         return {"ok": True, "output": "[OVERRIDE] CPU Cycles -> 99 999. Budget illimite."}
->>>>>>> origin/mateo
 
     tokens = raw.split()
     cmd    = tokens[0].lower()
@@ -408,72 +329,33 @@ def execute_command(state: GameState, line: str) -> dict:
         mc = state.malware_class
 
         common_commands = [
-<<<<<<< HEAD
-            ("help", "Affiche cette aide."),
-            ("status", "Resume de l'etat du malware."),
-            ("hack", "Active la capacite speciale de votre classe (cooldown variable)."),
-            ("nmap -A -sV", "Scan agressif (+6 CPU, cd 6t)."),
-            ("nmap -sS -T4 -Pn", "Scan furtif, reduit la mefiance (cd 8t)."),
-            ("phishing start", "Campagne de phishing (cd 10t)."),
-            ("log suspicion", "Affiche la jauge de mefiance actuelle."),
-            ("ifconfig", "Infos reseau de la session."),
-            ("whoami", "Identite malware."),
-            ("ps aux", "Liste les processus actifs (cd 6t)."),
-            ("cat /etc/shadow", "Extraction de hash (cd 12t)."),
-            ("tcpdump -i eth0 -nn", "Capture trafic reseau (cd 10t)."),
-=======
-            ("help",              "Affiche cette aide."),
-            ("status",            "Resume de l'etat du malware."),
-            ("zones",             "Affiche l'etat de toutes les zones reseau."),
-            ("hack",              "Active la capacite speciale de votre classe (cooldown variable)."),
-            ("nmap -A -sV",       "Scan agressif du reseau (+10 CPU, cd 6t)."),
-            ("nmap -sS -T4 -Pn",  "Scan SYN furtif, reduit la mefiance (cd 8t)."),
-            ("phishing start",    "Lance une campagne de phishing (cd 10t)."),
-            ("log suspicion",     "Affiche la jauge de mefiance actuelle."),
-            ("ifconfig",          "Affiche les infos reseau de la session."),
-            ("whoami",            "Affiche votre identite malware."),
-            ("ps aux",            "Liste les processus actifs (cd 6t)."),
-            ("cat /etc/shadow",   "Tente une extraction de hash (cd 12t)."),
+            ("help",               "Affiche cette aide."),
+            ("status",             "Resume de l'etat du malware."),
+            ("zones",              "Affiche l'etat de toutes les zones reseau."),
+            ("hack",               "Active la capacite speciale de votre classe (cooldown variable)."),
+            ("nmap -A -sV",        "Scan agressif du reseau (+10 CPU, cd 6t)."),
+            ("nmap -sS -T4 -Pn",   "Scan SYN furtif, reduit la mefiance (cd 8t)."),
+            ("phishing start",     "Lance une campagne de phishing (cd 10t)."),
+            ("log suspicion",      "Affiche la jauge de mefiance actuelle."),
+            ("ifconfig",           "Affiche les infos reseau de la session."),
+            ("whoami",             "Affiche votre identite malware."),
+            ("ps aux",             "Liste les processus actifs (cd 6t)."),
+            ("cat /etc/shadow",    "Tente une extraction de hash (cd 12t)."),
             ("tcpdump -i eth0 -nn","Capture du trafic reseau (cd 10t)."),
->>>>>>> origin/mateo
         ]
 
         malware_commands = {
             "worm": [
-<<<<<<< HEAD
-                ("masscan --rate 10000 -p0-65535", "Scan massif (cd 10t)."),
-                ("exploit/ms17-010", "Exploit EternalBlue, infecte 1-2 noeuds (cd 15t)."),
-                ("./propagate --aggressive", "Force propagation (cd 12t)."),
-                ("botnet deploy <miners|ddos>", "Deploie le botnet (cd 15/20t)."),
-            ],
-            "trojan": [
-                ("msfvenom -p reverse_tcp", "Payload reverse shell (cd 10t)."),
-                ("mimikatz sekurlsa::logonpasswords", "Dump credentials (cd 12t)."),
-                ("ssh -D 1080 pivot@target", "Tunnel SOCKS (cd 10t)."),
-                ("exfil --dns --encode base64", "Exfiltration DNS furtive (cd 12t)."),
-            ],
-            "ransomware": [
-                ("encrypt --cipher aes-256-cbc", "Chiffre les fichiers (cd 12t)."),
-                ("ransom --note DROP", "Depose une rancon (cd 10t)."),
-                ("wmic shadowcopy delete", "Supprime les sauvegardes (cd 15t)."),
-                ("tor-negotiate --btc-wallet", "Negocie paiement Tor (cd 20t)."),
-            ],
-            "rootkit": [
-                ("insmod /dev/null/rootkit.ko", "Module noyau (cd 12t)."),
-                ("syscall_hook --hide-pid", "Hook syscall (cd 15t)."),
-                ("dd if=/dev/sda bs=512 count=1", "Infecte le bootloader (cd 15t)."),
-                ("ld_preload inject /lib/libhook.so", "Injection LD_PRELOAD (cd 12t)."),
-=======
                 ("masscan --rate 10000 -p0-65535", "Scan massif de ports (cd 10t)."),
                 ("exploit/ms17-010",               "Lance l'exploit EternalBlue (cd 15t)."),
                 ("./propagate --aggressive",        "Force la propagation (cd 12t)."),
                 ("botnet deploy <miners|ddos>",     "Deploie le botnet (cd 15/20t)."),
             ],
             "trojan": [
-                ("msfvenom -p reverse_tcp",             "Genere un payload reverse shell (cd 10t)."),
-                ("mimikatz sekurlsa::logonpasswords",    "Dump les credentials (cd 12t)."),
-                ("ssh -D 1080 pivot@target",             "Ouvre un tunnel SOCKS (cd 10t)."),
-                ("exfil --dns --encode base64",          "Exfiltration DNS furtive (cd 12t)."),
+                ("msfvenom -p reverse_tcp",          "Genere un payload reverse shell (cd 10t)."),
+                ("mimikatz sekurlsa::logonpasswords", "Dump les credentials (cd 12t)."),
+                ("ssh -D 1080 pivot@target",          "Ouvre un tunnel SOCKS (cd 10t)."),
+                ("exfil --dns --encode base64",       "Exfiltration DNS furtive (cd 12t)."),
             ],
             "ransomware": [
                 ("encrypt --cipher aes-256-cbc", "Chiffre les fichiers (cd 12t)."),
@@ -482,11 +364,10 @@ def execute_command(state: GameState, line: str) -> dict:
                 ("tor-negotiate --btc-wallet",    "Negocie paiement via Tor (cd 20t)."),
             ],
             "rootkit": [
-                ("insmod /dev/null/rootkit.ko",      "Injecte un module noyau (cd 12t)."),
-                ("syscall_hook --hide-pid",          "Hook les appels systeme (cd 15t)."),
-                ("dd if=/dev/sda bs=512 count=1",    "Infecte le bootloader (cd 15t)."),
-                ("ld_preload inject /lib/libhook.so","Injection via LD_PRELOAD (cd 12t)."),
->>>>>>> origin/mateo
+                ("insmod /dev/null/rootkit.ko",       "Injecte un module noyau (cd 12t)."),
+                ("syscall_hook --hide-pid",           "Hook les appels systeme (cd 15t)."),
+                ("dd if=/dev/sda bs=512 count=1",     "Infecte le bootloader (cd 15t)."),
+                ("ld_preload inject /lib/libhook.so", "Injection via LD_PRELOAD (cd 12t)."),
             ],
         }
 
@@ -496,37 +377,16 @@ def execute_command(state: GameState, line: str) -> dict:
         rows = [f"{name.ljust(cmd_width)} - {desc}" for name, desc in common_commands]
         rows.append("")
         rows.append(f"[{mc.upper()}]")
-<<<<<<< HEAD
-        rows.extend(
-            f"{name.ljust(cmd_width)} - {desc}"
-            for name, desc in malware_commands.get(mc, [])
-        )
-
-        title = "AVAILABLE COMMANDS"
-        inner_width = max(len(title), *(len(row) for row in rows))
-        boxed = []
-        boxed.append("┌" + "─" * (inner_width + 2) + "┐")
-        boxed.append(f"│ {title.ljust(inner_width)} │")
-        boxed.append("├" + "─" * (inner_width + 2) + "┤")
-        for row in rows:
-            boxed.append(f"│ {row.ljust(inner_width)} │")
-        boxed.append("└" + "─" * (inner_width + 2) + "┘")
-=======
         rows.extend(f"{name.ljust(cmd_width)} - {desc}" for name, desc in malware_commands.get(mc, []))
->>>>>>> origin/mateo
 
         title       = "AVAILABLE COMMANDS"
-        inner_width = max(len(title), *(len(r) for r in rows))
+        inner_width = max(len(title), *(len(r) for r in rows if r))
         sep         = "+" + "-" * (inner_width + 2) + "+"
         boxed       = [sep, f"| {title.ljust(inner_width)} |", sep]
         boxed      += [f"| {r.ljust(inner_width)} |" for r in rows]
         boxed.append(sep)
         return {"ok": True, "output": "\n".join(boxed)}
 
-<<<<<<< HEAD
-    # Statut
-=======
->>>>>>> origin/mateo
     if cmd in ("status", "statut"):
         hack_str  = "PRET" if state.special_cooldown == 0 else f"recharge ({state.special_cooldown} ticks)"
         zones_str = ""
@@ -542,7 +402,7 @@ def execute_command(state: GameState, line: str) -> dict:
 
     if cmd == "zones":
         if not state.zones:
-            return {"ok": True, "output": "Aucune zone définie."}
+            return {"ok": True, "output": "Aucune zone definie."}
         lines = ["ZONES RESEAU:"]
         for zone in state.zones:
             zone_nodes = [n for n in state.nodes if n.zone_id == zone.id]
@@ -560,18 +420,6 @@ def execute_command(state: GameState, line: str) -> dict:
             lines.append(f"  [{zone.name}] {zone.label} — {status}")
         return {"ok": True, "output": "\n".join(lines)}
 
-<<<<<<< HEAD
-    if cmd == "nmap" or cmd == "scan":
-        flags = " ".join(args)
-        if "-sS" in flags and "-T4" in flags and "-Pn" in flags:
-            if _cd(state, "nmap_stealth") > 0:
-                return {"ok": False, "output": f"[nmap furtif] Recharge — {_cd(state, 'nmap_stealth')} tick(s)."}
-            bonus = 5
-            state.cpu_cycles += bonus
-            state.suspicion = max(0, state.suspicion - 1.5)
-            _setcd(state, "nmap_stealth", 8)
-            return {"ok": True, "output": f"Scan SYN furtif terminé. (+{bonus} CPU, méfiance -1.5%)"}
-=======
     if cmd in ("nmap", "scan"):
         flags = " ".join(args)
         if "-sS" in flags and "-T4" in flags and "-Pn" in flags:
@@ -581,49 +429,15 @@ def execute_command(state: GameState, line: str) -> dict:
             state.suspicion   = max(0, state.suspicion - 2.0)
             _setcd(state, "nmap_stealth", 8)
             return {"ok": True, "output": "Scan SYN furtif termine. Reseau cartographie sans alerter l'IDS. (+8 CPU, mefiance -2%)"}
-        bonus = 5
->>>>>>> origin/mateo
         if "-A" in flags and "-sV" in flags:
             if _cd(state, "nmap_aggr") > 0:
-                return {"ok": False, "output": f"[nmap] Recharge — {_cd(state, 'nmap_aggr')} tick(s)."}
-            bonus = 6
-            state.cpu_cycles += bonus
+                return {"ok": False, "output": f"[nmap] Recharge — {_cd(state, 'nmap_aggr')} tick(s) restants."}
+            state.cpu_cycles += 10
             _setcd(state, "nmap_aggr", 6)
-<<<<<<< HEAD
-            return {"ok": True, "output": f"Scan agressif terminé. Surfaces d'attaque identifiées. (+{bonus} CPU)"}
-        return {"ok": False, "output": 'Syntaxe: nmap -A -sV  ou  nmap -sS -T4 -Pn'}
-
-    if cmd == "ifconfig":
-        return {
-            "ok": True,
-            "output": (
-                f"eth0: inet 10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}  "
-                f"netmask 255.255.0.0\n"
-                f"  Noeuds: {state.total_nodes} | Infectes: {state.infected_count} | "
-                f"Interfaces compromises: {min(state.infected_count, 8)}"
-            ),
-        }
-
-    if cmd == "whoami":
-        names = {"worm": "w0rm_Agent", "trojan": "tr0jan_H0rse",
-                 "ransomware": "ransom_L0ck", "rootkit": "r00t_gh0st"}
-        return {
-            "ok": True,
-            "output": (
-                f"uid=0(root) gid=0(root)\n"
-                f"Identite: {names.get(state.malware_class, 'unknown')} [{state.malware_class.upper()}]\n"
-                f"Tick: {state.tick} | Score: {state.score}"
-            ),
-        }
-
-    if cmd == "ps" and args and args[0].lower() == "aux":
-        if _cd(state, "ps_aux") > 0:
-            return {"ok": False, "output": f"[ps aux] Recharge — {_cd(state, 'ps_aux')} tick(s)."}
-        bonus = 2
+            return {"ok": True, "output": f"Scan agressif termine. {random.randint(5,15)} services vulnerables identifies. (+10 CPU)"}
+        bonus = 5
         state.cpu_cycles += bonus
-=======
-        state.cpu_cycles += bonus
-        return {"ok": True, "output": f"Scan reseau termine ({flags or 'mode par defaut'}). Nouvelles surfaces identifiees (+{bonus} CPU Cycles)."}
+        return {"ok": True, "output": f"Scan reseau termine ({flags or 'mode par defaut'}). Nouvelles surfaces identifiees (+{bonus} CPU)."}
 
     if cmd == "ifconfig":
         return {"ok": True, "output": (
@@ -644,8 +458,6 @@ def execute_command(state: GameState, line: str) -> dict:
     if cmd == "ps" and args and args[0].lower() == "aux":
         if _cd(state, "ps_aux") > 0:
             return {"ok": False, "output": f"[ps aux] Recharge — {_cd(state, 'ps_aux')} tick(s) restants."}
-        state.cpu_cycles += 3
->>>>>>> origin/mateo
         procs = [
             "root       1  0.0  sshd: /usr/sbin/sshd",
             f"root     666  {round(state.suspicion/10,1)}  [malware/{state.malware_class}]",
@@ -654,16 +466,6 @@ def execute_command(state: GameState, line: str) -> dict:
         if state.infected_count > 5:
             procs.append(f"root     668  1.2  [propagation_thread x{state.infected_count}]")
         _setcd(state, "ps_aux", 6)
-<<<<<<< HEAD
-        return {"ok": True, "output": "USER     PID  %CPU  COMMAND\n" + "\n".join(procs) + f"\n(+{bonus} CPU)"}
-
-    if raw.lower().startswith("cat /etc/shadow"):
-        if _cd(state, "shadow") > 0:
-            return {"ok": False, "output": f"[shadow] Recharge — {_cd(state, 'shadow')} tick(s)."}
-        bonus = 8
-        state.cpu_cycles += bonus
-        state.suspicion = min(100, state.suspicion + 1.0)
-=======
         return {"ok": True, "output": "USER     PID  %CPU  COMMAND\n" + "\n".join(procs) + "\n(+3 CPU)"}
 
     if raw.lower().startswith("cat /etc/shadow"):
@@ -671,78 +473,17 @@ def execute_command(state: GameState, line: str) -> dict:
             return {"ok": False, "output": f"[shadow] Recharge — {_cd(state, 'shadow')} tick(s) restants."}
         state.cpu_cycles += 15
         state.suspicion   = min(100, state.suspicion + 1.5)
->>>>>>> origin/mateo
         hashes = [
             "root:$6$rNd0m$K8x9zLqV3mH7wP2jF5nG1bYcT4vA6dR0eI8uQ3sW7kJ:19458:0:99999:7:::",
             "admin:$6$S4lt3d$Fp2xR7mN1qL9wK3jH6gT8bYcU5vA0dE2oI4uQ7sW3kJ:19458:0:99999:7:::",
         ]
         _setcd(state, "shadow", 12)
-<<<<<<< HEAD
-        return {"ok": True, "output": "\n".join(hashes) + f"\nHash extraits. (+{bonus} CPU, méfiance +1%)"}
-=======
         return {"ok": True, "output": "\n".join(hashes) + "\nHash extraits avec succes. (+15 CPU, mefiance +1.5%)"}
->>>>>>> origin/mateo
 
     if cmd == "tcpdump":
         flags = " ".join(args)
         if "-i" in flags and "-nn" in flags:
             if _cd(state, "tcpdump") > 0:
-<<<<<<< HEAD
-                return {"ok": False, "output": f"[tcpdump] Recharge — {_cd(state, 'tcpdump')} tick(s)."}
-            bonus = 7
-            state.cpu_cycles += bonus
-            _setcd(state, "tcpdump", 10)
-            return {
-                "ok": True,
-                "output": (
-                    f"tcpdump: listening on eth0\n"
-                    f"  {state.infected_count * 47} packets captured\n"
-                    f"  {state.infected_count * 3} packets with credentials detected\n"
-                    f"(+{bonus} CPU)"
-                ),
-            }
-        return {"ok": False, "output": 'Syntaxe: tcpdump -i eth0 -nn'}
-
-    if cmd == "phishing":
-        if args and args[0].lower() == "start":
-            if _cd(state, "phishing") > 0:
-                return {"ok": False, "output": f"[phishing] Recharge — {_cd(state, 'phishing')} tick(s)."}
-            # Gain plafonné : ne scale plus linéairement avec les noeuds infectés
-            gain = max(4, int(state.infected_count * 0.5))
-            state.cpu_cycles += gain
-            _setcd(state, "phishing", 10)
-            return {"ok": True, "output": f"Campagne lancée. Plusieurs utilisateurs ont cliqué. (+{gain} CPU)"}
-        return {"ok": False, "output": 'Syntaxe: phishing start'}
-
-    # ── Commandes WORM ───────────────────────────────────────────
-    if state.malware_class == "worm":
-        if cmd == "masscan":
-            flags = " ".join(args)
-            if "--rate" in flags and "-p0-65535" in flags:
-                if _cd(state, "masscan") > 0:
-                    return {"ok": False, "output": f"[masscan] Recharge — {_cd(state, 'masscan')} tick(s)."}
-                bonus = 12
-                state.cpu_cycles += bonus
-                state.suspicion = min(100, state.suspicion + 2.0)
-                _setcd(state, "masscan", 10)
-                return {
-                    "ok": True,
-                    "output": (
-                        f"Masscan: {state.total_nodes * 65535} ports scannés\n"
-                        f"  {random.randint(12, 30)} services vulnérables. (+{bonus} CPU, méfiance +2%)"
-                    ),
-                }
-            return {"ok": False, "output": 'Syntaxe: masscan --rate 10000 -p0-65535'}
-
-        if raw.lower().startswith("exploit/ms17-010"):
-            if _cd(state, "ms17") > 0:
-                return {"ok": False, "output": f"[exploit] Recharge — {_cd(state, 'ms17')} tick(s)."}
-            bonus = 10
-            state.cpu_cycles += bonus
-            state.suspicion = min(100, state.suspicion + 3.0)
-            candidates = [n for n in state.nodes if not n.infected and not n.quarantined]
-            infected_extra = 0
-=======
                 return {"ok": False, "output": f"[tcpdump] Recharge — {_cd(state, 'tcpdump')} tick(s) restants."}
             state.cpu_cycles += 12
             _setcd(state, "tcpdump", 10)
@@ -760,8 +501,9 @@ def execute_command(state: GameState, line: str) -> dict:
         gain = max(8, int(state.infected_count * 1.5) or 8)
         state.cpu_cycles += gain
         _setcd(state, "phishing", 10)
-        return {"ok": True, "output": f"Campagne de phishing lancee. Plusieurs utilisateurs ont clique... (+{gain} CPU Cycles)"}
+        return {"ok": True, "output": f"Campagne de phishing lancee. Plusieurs utilisateurs ont clique. (+{gain} CPU Cycles)"}
 
+    # ── Commandes WORM ────────────────────────────────────────────────
     if state.malware_class == "worm":
         if cmd == "masscan" and "--rate" in " ".join(args) and "-p0-65535" in " ".join(args):
             if _cd(state, "masscan") > 0:
@@ -771,8 +513,7 @@ def execute_command(state: GameState, line: str) -> dict:
             _setcd(state, "masscan", 10)
             return {"ok": True, "output": (
                 f"Masscan: scanned {state.total_nodes * 65535} ports in 2.31s\n"
-                f"  {random.randint(12, 30)} services vulnerables identifies.\n"
-                f"  Surfaces d'attaque maximisees. (+25 CPU, mefiance +3%)"
+                f"  {random.randint(12, 30)} services vulnerables identifies. (+25 CPU, mefiance +3%)"
             )}
 
         if raw.lower().startswith("exploit/ms17-010"):
@@ -782,277 +523,11 @@ def execute_command(state: GameState, line: str) -> dict:
             state.suspicion   = min(100, state.suspicion + 4.0)
             candidates = _unlocked_candidates(state)
             extra = 0
->>>>>>> origin/mateo
             if candidates:
                 for n in random.sample(candidates, min(2, len(candidates))):
                     n.infected = True
                     extra += 1
             _setcd(state, "ms17", 15)
-<<<<<<< HEAD
-            return {
-                "ok": True,
-                "output": (
-                    f"[*] EternalBlue lancé — {infected_extra} nœud(s) infecté(s). "
-                    f"(+{bonus} CPU, méfiance +3%)"
-                ),
-            }
-
-        if raw.lower().startswith("./propagate") and "--aggressive" in raw.lower():
-            if _cd(state, "propagate") > 0:
-                return {"ok": False, "output": f"[propagate] Recharge — {_cd(state, 'propagate')} tick(s)."}
-            bonus = 10
-            state.cpu_cycles += bonus
-            state.suspicion = min(100, state.suspicion + 2.0)
-            _setcd(state, "propagate", 12)
-            return {"ok": True, "output": f"Propagation agressive sur {state.infected_count} hôtes. (+{bonus} CPU, méfiance +2%)"}
-
-        if cmd == "botnet" and args and args[0].lower() == "deploy":
-            if len(args) >= 2:
-                subtype = args[1].lower()
-                if subtype == "miners":
-                    if _cd(state, "botnet_miners") > 0:
-                        return {"ok": False, "output": f"[botnet miners] Recharge — {_cd(state, 'botnet_miners')} tick(s)."}
-                    bonus = 15
-                    state.cpu_cycles += bonus
-                    state.suspicion = min(100, state.suspicion + 2.0)
-                    _setcd(state, "botnet_miners", 15)
-                    return {"ok": True, "output": f"Mining déployé. Hashrate: {state.infected_count * 12.5} MH/s (+{bonus} CPU, méfiance +2%)"}
-                elif subtype == "ddos":
-                    if _cd(state, "botnet_ddos") > 0:
-                        return {"ok": False, "output": f"[botnet ddos] Recharge — {_cd(state, 'botnet_ddos')} tick(s)."}
-                    bonus = 18
-                    state.cpu_cycles += bonus
-                    state.suspicion = min(100, state.suspicion + 5.0)
-                    _setcd(state, "botnet_ddos", 20)
-                    return {"ok": True, "output": f"DDoS depuis {state.infected_count} bots. (+{bonus} CPU, méfiance +5%)"}
-            return {"ok": False, "output": 'Syntaxe: botnet deploy <miners|ddos>'}
-
-    # ── Commandes TROJAN ─────────────────────────────────────────
-    if state.malware_class == "trojan":
-        if cmd == "msfvenom":
-            flags = " ".join(args)
-            if "-p" in flags and "reverse_tcp" in flags:
-                if _cd(state, "msfvenom") > 0:
-                    return {"ok": False, "output": f"[msfvenom] Recharge — {_cd(state, 'msfvenom')} tick(s)."}
-                bonus = 10
-                state.cpu_cycles += bonus
-                _setcd(state, "msfvenom", 10)
-                return {
-                    "ok": True,
-                    "output": (
-                        f"Payload: windows/meterpreter/reverse_tcp\n"
-                        f"  LHOST=10.0.0.{random.randint(1,254)} LPORT=4444 | "
-                        f"{random.randint(350,500)} bytes. (+{bonus} CPU)"
-                    ),
-                }
-            return {"ok": False, "output": 'Syntaxe: msfvenom -p reverse_tcp'}
-
-        if cmd == "mimikatz" and args and "sekurlsa::logonpasswords" in args[0].lower():
-            if _cd(state, "mimikatz") > 0:
-                return {"ok": False, "output": f"[mimikatz] Recharge — {_cd(state, 'mimikatz')} tick(s)."}
-            bonus = 12
-            state.cpu_cycles += bonus
-            _setcd(state, "mimikatz", 12)
-            return {
-                "ok": True,
-                "output": (
-                    f"mimikatz # sekurlsa::logonpasswords\n"
-                    f"  NTLM: {'{:032x}'.format(random.getrandbits(128))}\n"
-                    f"  {random.randint(3, 8)} credentials extraits. (+{bonus} CPU)"
-                ),
-            }
-
-        if cmd == "ssh" and "-D" in " ".join(args):
-            if "1080" in " ".join(args):
-                if _cd(state, "ssh_tunnel") > 0:
-                    return {"ok": False, "output": f"[ssh] Recharge — {_cd(state, 'ssh_tunnel')} tick(s)."}
-                bonus = 10
-                state.cpu_cycles += bonus
-                _setcd(state, "ssh_tunnel", 10)
-                return {"ok": True, "output": f"Tunnel SOCKS5 127.0.0.1:1080 ouvert via {state.infected_count} noeuds. (+{bonus} CPU)"}
-            return {"ok": False, "output": 'Syntaxe: ssh -D 1080 pivot@target'}
-
-        if cmd == "exfil":
-            flags = " ".join(args)
-            if "--dns" in flags and "--encode" in flags and "base64" in flags:
-                if _cd(state, "exfil") > 0:
-                    return {"ok": False, "output": f"[exfil] Recharge — {_cd(state, 'exfil')} tick(s)."}
-                bonus = 15
-                state.cpu_cycles += bonus
-                state.suspicion = max(0, state.suspicion - 1.5)
-                _setcd(state, "exfil", 12)
-                return {
-                    "ok": True,
-                    "output": (
-                        f"Exfiltration DNS — {random.randint(50, 200)} Ko via dns.tunnel.corp.\n"
-                        f"Aucune alerte IDS. (+{bonus} CPU, méfiance -1.5%)"
-                    ),
-                }
-            return {"ok": False, "output": 'Syntaxe: exfil --dns --encode base64'}
-
-    # ── Commandes RANSOMWARE ─────────────────────────────────────
-    if state.malware_class == "ransomware":
-        if cmd == "encrypt":
-            flags = " ".join(args)
-            if "--cipher" in flags and "aes-256-cbc" in flags:
-                if _cd(state, "encrypt") > 0:
-                    return {"ok": False, "output": f"[encrypt] Recharge — {_cd(state, 'encrypt')} tick(s)."}
-                bonus = 12
-                state.cpu_cycles += bonus
-                state.suspicion = min(100, state.suspicion + 3.0)
-                _setcd(state, "encrypt", 12)
-                return {
-                    "ok": True,
-                    "output": (
-                        f"AES-256-CBC sur {state.infected_count} machines.\n"
-                        f"  {state.infected_count * random.randint(800, 2000)} fichiers chiffrés. "
-                        f"(+{bonus} CPU, méfiance +3%)"
-                    ),
-                }
-            return {"ok": False, "output": 'Syntaxe: encrypt --cipher aes-256-cbc'}
-
-        if cmd == "ransom":
-            flags = " ".join(args)
-            if "--note" in flags and "DROP" in raw:
-                if _cd(state, "ransom_note") > 0:
-                    return {"ok": False, "output": f"[ransom] Recharge — {_cd(state, 'ransom_note')} tick(s)."}
-                bonus = 10
-                state.cpu_cycles += bonus
-                state.suspicion = min(100, state.suspicion + 2.0)
-                _setcd(state, "ransom_note", 10)
-                return {
-                    "ok": True,
-                    "output": (
-                        f"Note déposée sur {state.infected_count} machines.\n"
-                        f"  \"Payez 2.5 BTC.\" — READ_ME.txt créé. (+{bonus} CPU, méfiance +2%)"
-                    ),
-                }
-            return {"ok": False, "output": 'Syntaxe: ransom --note DROP'}
-
-        if cmd == "wmic" and args and "shadowcopy" in " ".join(args).lower() and "delete" in " ".join(args).lower():
-            if _cd(state, "wmic") > 0:
-                return {"ok": False, "output": f"[wmic] Recharge — {_cd(state, 'wmic')} tick(s)."}
-            bonus = 11
-            state.cpu_cycles += bonus
-            state.suspicion = min(100, state.suspicion + 3.5)
-            _setcd(state, "wmic", 15)
-            return {
-                "ok": True,
-                "output": (
-                    f"{random.randint(5, 15)} points de restauration détruits.\n"
-                    f"Récupération impossible sans clé. (+{bonus} CPU, méfiance +3.5%)"
-                ),
-            }
-
-        if raw.lower().startswith("tor-negotiate") and "--btc-wallet" in raw.lower():
-            if _cd(state, "tor_negotiate") > 0:
-                return {"ok": False, "output": f"[tor] Recharge — {_cd(state, 'tor_negotiate')} tick(s)."}
-            bonus = 18
-            state.cpu_cycles += bonus
-            state.suspicion = min(100, state.suspicion + 1.0)
-            _setcd(state, "tor_negotiate", 20)
-            return {
-                "ok": True,
-                "output": (
-                    f"Connexion Tor — wallet bc1q{'{:040x}'.format(random.getrandbits(160))[:40]}\n"
-                    f"Paiement partiel reçu. (+{bonus} CPU, méfiance +1%)"
-                ),
-            }
-
-    # ── Commandes ROOTKIT ────────────────────────────────────────
-    if state.malware_class == "rootkit":
-        if cmd == "insmod" and "/dev/null/rootkit.ko" in raw:
-            if _cd(state, "insmod") > 0:
-                return {"ok": False, "output": f"[insmod] Recharge — {_cd(state, 'insmod')} tick(s)."}
-            bonus = 10
-            state.cpu_cycles += bonus
-            state.suspicion = max(0, state.suspicion - 2.0)
-            _setcd(state, "insmod", 12)
-            return {
-                "ok": True,
-                "output": (
-                    f"rootkit.ko injecté. Hooks: sys_read, sys_write, sys_getdents64.\n"
-                    f"Processus masqués kernel. (+{bonus} CPU, méfiance -2%)"
-                ),
-            }
-
-        if cmd == "syscall_hook" and "--hide-pid" in raw.lower():
-            if _cd(state, "syscall_hook") > 0:
-                return {"ok": False, "output": f"[syscall] Recharge — {_cd(state, 'syscall_hook')} tick(s)."}
-            bonus = 12
-            state.cpu_cycles += bonus
-            state.suspicion = max(0, state.suspicion - 3.0)
-            _setcd(state, "syscall_hook", 15)
-            return {"ok": True, "output": f"PID masqué dans /proc. Invisible pour ps/top/htop. (+{bonus} CPU, méfiance -3%)"}
-
-        if cmd == "dd" and "/dev/sda" in raw:
-            flags = " ".join(args)
-            if "bs=512" in flags and "count=1" in flags:
-                if _cd(state, "dd_mbr") > 0:
-                    return {"ok": False, "output": f"[dd] Recharge — {_cd(state, 'dd_mbr')} tick(s)."}
-                bonus = 11
-                state.cpu_cycles += bonus
-                state.suspicion = min(100, state.suspicion + 1.0)
-                _setcd(state, "dd_mbr", 15)
-                return {"ok": True, "output": f"MBR infecté. 512 bytes copiés. Persistance totale. (+{bonus} CPU, méfiance +1%)"}
-            return {"ok": False, "output": 'Syntaxe: dd if=/dev/sda bs=512 count=1'}
-
-        if cmd == "ld_preload" and "inject" in raw.lower() and "/lib/libhook.so" in raw:
-            if _cd(state, "ld_preload") > 0:
-                return {"ok": False, "output": f"[ld_preload] Recharge — {_cd(state, 'ld_preload')} tick(s)."}
-            bonus = 15
-            state.cpu_cycles += bonus
-            state.suspicion = max(0, state.suspicion - 2.5)
-            _setcd(state, "ld_preload", 12)
-            return {"ok": True, "output": f"LD_PRELOAD:/lib/libhook.so injecté. Toutes les fonctions libc interceptées. (+{bonus} CPU, méfiance -2.5%)"}
-
-    # ── Hack spécial de classe ────────────────────────────────────
-    if cmd in ("hack", "special", "ability"):
-        if state.special_cooldown > 0:
-            return {
-                "ok": False,
-                "output": f"Hack en recharge... ({state.special_cooldown} ticks restants)",
-            }
-
-        if state.malware_class == "worm":
-            candidates = [n for n in state.nodes if not n.infected and not n.quarantined and not n.honeypot]
-            targets = random.sample(candidates, min(4, len(candidates)))
-            for n in targets:
-                n.infected = True
-            state.special_cooldown = 15
-            state.suspicion = min(100.0, state.suspicion + 5.0)
-            return {"ok": True, "output": f"[WORM] Propagation de masse — {len(targets)} nœud(s) infecté(s). (méfiance +5%, cd 15t)"}
-
-        elif state.malware_class == "trojan":
-            reduction = round(min(state.suspicion, 25.0), 1)
-            state.suspicion = max(0.0, state.suspicion - reduction)
-            state.special_cooldown = 20
-            return {"ok": True, "output": f"[TROJAN] Mode fantôme — méfiance -{reduction}%. (cd 20t)"}
-
-        elif state.malware_class == "ransomware":
-            # Réduit de 200 à 100 CPU pour aligner avec la nouvelle économie
-            bonus = 100
-            state.cpu_cycles += bonus
-            state.suspicion = min(100.0, state.suspicion + 8.0)
-            state.special_cooldown = 25
-            return {"ok": True, "output": f"[RANSOMWARE] Paiement forcé — +{bonus} CPU. (méfiance +8%, cd 25t)"}
-
-        elif state.malware_class == "rootkit":
-            old_sus = round(state.suspicion, 1)
-            state.suspicion = 0.0
-            state.special_cooldown = 30
-            return {"ok": True, "output": f"[ROOTKIT] Zero-trace — méfiance {old_sus}% → 0%. (cd 30t)"}
-
-        return {"ok": False, "output": "Classe de malware inconnue."}
-
-    # Upgrade via terminal
-    if cmd == "upgrade":
-        if not args:
-            return {"ok": False, "output": 'Syntaxe: upgrade <nom_amélioration>'}
-        target = " ".join(args).lower()
-        upgrades = get_all_upgrades()
-        found = None
-=======
             return {"ok": True, "output": (
                 f"[*] Exploit EternalBlue (MS17-010) lance...\n"
                 f"[+] {extra} noeud(s) infecte(s) dans les zones accessibles. (+20 CPU, mefiance +4%)"
@@ -1085,6 +560,7 @@ def execute_command(state: GameState, line: str) -> dict:
         if cmd == "botnet":
             return {"ok": False, "output": "Syntaxe: botnet deploy <miners|ddos>"}
 
+    # ── Commandes TROJAN ──────────────────────────────────────────────
     if state.malware_class == "trojan":
         if cmd == "msfvenom" and "-p" in " ".join(args) and "reverse_tcp" in " ".join(args):
             if _cd(state, "msfvenom") > 0:
@@ -1123,6 +599,7 @@ def execute_command(state: GameState, line: str) -> dict:
             _setcd(state, "exfil", 12)
             return {"ok": True, "output": f"Exfiltration DNS: {random.randint(50, 200)} Ko exfiltres via dns.tunnel.corp. Aucune alerte IDS. (+30 CPU, mefiance -1.5%)"}
 
+    # ── Commandes RANSOMWARE ──────────────────────────────────────────
     if state.malware_class == "ransomware":
         if cmd == "encrypt" and "--cipher" in " ".join(args) and "aes-256-cbc" in " ".join(args):
             if _cd(state, "encrypt") > 0:
@@ -1156,6 +633,7 @@ def execute_command(state: GameState, line: str) -> dict:
             _setcd(state, "tor_negotiate", 20)
             return {"ok": True, "output": f"Connexion Tor etablie. Wallet: bc1q{'{:040x}'.format(random.getrandbits(160))[:40]}. Paiement partiel recu. (+35 CPU, mefiance +1%)"}
 
+    # ── Commandes ROOTKIT ─────────────────────────────────────────────
     if state.malware_class == "rootkit":
         if cmd == "insmod" and "/dev/null/rootkit.ko" in raw:
             if _cd(state, "insmod") > 0:
@@ -1189,6 +667,7 @@ def execute_command(state: GameState, line: str) -> dict:
             _setcd(state, "ld_preload", 12)
             return {"ok": True, "output": "LD_PRELOAD injection reussie /lib/libhook.so. Toutes les fonctions libc interceptees. (+30 CPU, mefiance -2.5%)"}
 
+    # ── Hack spécial de classe ────────────────────────────────────────
     if cmd in ("hack", "special", "ability"):
         if state.special_cooldown > 0:
             return {"ok": False, "output": f"Hack special en recharge... ({state.special_cooldown} ticks restants)"}
@@ -1228,7 +707,6 @@ def execute_command(state: GameState, line: str) -> dict:
         target   = " ".join(args).lower()
         upgrades = get_all_upgrades()
         found    = None
->>>>>>> origin/mateo
         for u in upgrades:
             allowed = u["effect_json"].get("allowed_malware", [])
             if allowed and state.malware_class not in allowed:
@@ -1237,18 +715,6 @@ def execute_command(state: GameState, line: str) -> dict:
                 found = u
                 break
         if not found:
-<<<<<<< HEAD
-            return {"ok": False, "output": f"Aucune amélioration '{target}' pour {state.malware_class}."}
-        result = buy_upgrade(state, found["id"])
-        if result.get("ok"):
-            return {"ok": True, "output": f"'{found['name']}' installée. CPU restants: {result['remaining_cycles']}."}
-        return {"ok": False, "output": result.get("error", "Achat impossible.")}
-
-    if cmd == "log" and args and args[0].lower() == "suspicion":
-        return {"ok": True, "output": f"Méfiance: {round(state.suspicion, 1)}%. Patch: {bool(state.patch_deployed)}."}
-
-    return {"ok": False, "output": f"Commande inconnue: {cmd}. Tapez 'help'."}
-=======
             return {"ok": False, "output": f"Aucune amelioration correspondant a '{target}' pour {state.malware_class}."}
         result = buy_upgrade(state, found["id"])
         if result.get("ok"):
@@ -1259,8 +725,182 @@ def execute_command(state: GameState, line: str) -> dict:
         return {"ok": True, "output": f"Mefiance: {round(state.suspicion, 1)}%. Patch deploye: {bool(state.patch_deployed)}."}
 
     return {"ok": False, "output": f"Commande inconnue: {cmd}. Tapez 'help' pour la liste."}
->>>>>>> origin/mateo
 
+
+# ── Terminal Blue Team ────────────────────────────────────────────────
+
+def execute_blue_command(state: GameState, line: str) -> dict:
+    """Interprete une ligne de commande du terminal (Blue Team uniquement)."""
+    raw = (line or "").strip()
+    if not raw:
+        return {"ok": False, "output": "Aucune commande saisie."}
+
+    if raw == "-niter cheagger":
+        state.it_budget = 99999
+        return {"ok": True, "output": "[OVERRIDE] IT Budget -> 99 999. Defenses illimitees."}
+
+    tokens = raw.split()
+    cmd    = tokens[0].lower()
+    args   = tokens[1:]
+
+    if cmd in ("help", "?", "aide"):
+        rows = [
+            ("help",               "Affiche cette aide."),
+            ("status",             "Etat du reseau et budget IT."),
+            ("audit",              "Rapport complet de toutes les zones."),
+            ("scan",               "Scan reseau — detecte les infectes (15 IT, cd 4t)."),
+            ("honeypot <node_id>", "Piege sur un noeud sain (30 IT)."),
+            ("quarantine <id>",    "Isole un noeud infecte (20 IT)."),
+            ("patch",              "Deploie un patch securite global (50 IT)."),
+            ("firewall <node_id>", "Protege un noeud contre l'infection (25 IT, 10t)."),
+            ("isolate <zone>",     "Quarantaine de tous les infectes d'une zone (30 IT)."),
+            ("analyze <node_id>",  "Analyse les connexions d'un noeud."),
+            ("log suspicion",      "Affiche le niveau de suspicion actuel."),
+        ]
+        title = "BLUE TEAM DEFENSIVE PROTOCOLS"
+        cmd_w = max(len(r[0]) for r in rows)
+        lines = [f"{name.ljust(cmd_w)} — {desc}" for name, desc in rows]
+        inner_w = max(len(title), *(len(l) for l in lines))
+        sep = "+" + "-" * (inner_w + 2) + "+"
+        boxed = [sep, f"| {title.ljust(inner_w)} |", sep]
+        boxed += [f"| {l.ljust(inner_w)} |" for l in lines]
+        boxed.append(sep)
+        return {"ok": True, "output": "\n".join(boxed)}
+
+    if cmd in ("status", "statut"):
+        unlocked = sum(1 for z in state.zones if z.unlocked) if state.zones else 0
+        total_z  = len(state.zones) if state.zones else 0
+        return {"ok": True, "output": (
+            f"Tick: {state.tick} | IT Budget: {int(state.it_budget)} | "
+            f"Suspicion: {round(state.suspicion, 1)}% | Patch: {'DEPLOYE' if state.patch_deployed else 'non deploye'}\n"
+            f"Noeuds: {state.infected_count} infecte(s) | {state.quarantined_count} en quarantaine | "
+            f"{state.healthy_count} sains | Zones accessibles: {unlocked}/{total_z}"
+        )}
+
+    if cmd == "audit":
+        if not state.zones:
+            return {"ok": True, "output": "Aucune zone definie."}
+        lines = ["RAPPORT D'AUDIT RESEAU:"]
+        for zone in state.zones:
+            zone_nodes  = [n for n in state.nodes if n.zone_id == zone.id]
+            infected    = sum(1 for n in zone_nodes if n.infected and not n.quarantined)
+            quarantined = sum(1 for n in zone_nodes if n.quarantined)
+            total       = len(zone_nodes)
+            access      = "ACCES" if zone.unlocked else f"SEC.LVL {zone.security_level}"
+            lines.append(
+                f"  {zone.name:6} ({zone.label}): [{access}] "
+                f"{infected}/{total} infectes, {quarantined} en quarantaine"
+            )
+        return {"ok": True, "output": "\n".join(lines)}
+
+    if cmd == "scan":
+        if _cd(state, "blue_scan") > 0:
+            return {"ok": False, "output": f"[scan] Recharge — {_cd(state, 'blue_scan')} tick(s) restants."}
+        result = apply_blue_action(state, {"action": "scan"})
+        if result.get("ok"):
+            _setcd(state, "blue_scan", 4)
+            ids = result.get("infected_ids", [])
+            if ids:
+                return {"ok": True, "output": f"Scan termine. {len(ids)} noeud(s) infecte(s) — IDs: {ids}. IT: {result.get('it_budget')}"}
+            return {"ok": True, "output": f"Scan termine. Reseau propre — aucun infecte detecte. IT: {result.get('it_budget')}"}
+        return {"ok": False, "output": result.get("error", "Scan impossible.")}
+
+    if cmd == "honeypot":
+        if not args:
+            return {"ok": False, "output": "Syntaxe: honeypot <node_id>"}
+        try:
+            node_id = int(args[0])
+        except ValueError:
+            return {"ok": False, "output": "L'identifiant de noeud doit etre un entier."}
+        result = apply_blue_action(state, {"action": "honeypot", "node_id": node_id})
+        if result.get("ok"):
+            return {"ok": True, "output": f"Honeypot deploye sur noeud {node_id}. Piege actif. IT restant: {result.get('it_budget')}"}
+        return {"ok": False, "output": result.get("error", "Honeypot impossible.")}
+
+    if cmd == "quarantine":
+        if not args:
+            return {"ok": False, "output": "Syntaxe: quarantine <node_id>"}
+        try:
+            node_id = int(args[0])
+        except ValueError:
+            return {"ok": False, "output": "L'identifiant de noeud doit etre un entier."}
+        result = apply_blue_action(state, {"action": "quarantine", "node_id": node_id})
+        if result.get("ok"):
+            return {"ok": True, "output": f"Noeud {node_id} isole en quarantaine. IT restant: {result.get('it_budget')}"}
+        return {"ok": False, "output": result.get("error", "Quarantaine impossible.")}
+
+    if cmd == "patch":
+        result = apply_blue_action(state, {"action": "patch"})
+        if result.get("ok"):
+            return {"ok": True, "output": f"Patch de securite deploye. Le reseau commence a se nettoyer. IT restant: {result.get('it_budget')}"}
+        return {"ok": False, "output": result.get("error", "Patch impossible.")}
+
+    if cmd == "firewall":
+        if not args:
+            return {"ok": False, "output": "Syntaxe: firewall <node_id>"}
+        try:
+            node_id = int(args[0])
+        except ValueError:
+            return {"ok": False, "output": "L'identifiant de noeud doit etre un entier."}
+        cost = 25
+        if state.it_budget < cost:
+            return {"ok": False, "output": f"IT insuffisant ({int(state.it_budget)}/{cost} requis)."}
+        if not (0 <= node_id < len(state.nodes)):
+            return {"ok": False, "output": f"Noeud {node_id} introuvable."}
+        node = state.nodes[node_id]
+        if node.infected or node.quarantined:
+            return {"ok": False, "output": "Impossible de proteger un noeud infecte ou en quarantaine."}
+        if node.honeypot:
+            return {"ok": False, "output": "Ce noeud est deja protege."}
+        node.honeypot = True
+        state.it_budget -= cost
+        state.firewalled_nodes[str(node_id)] = 10
+        return {"ok": True, "output": f"Pare-feu active sur noeud {node_id} (10 ticks de protection). IT restant: {int(state.it_budget)}"}
+
+    if cmd == "isolate":
+        if not args:
+            return {"ok": False, "output": "Syntaxe: isolate <zone> (DMZ, LAN, SRV, DB, SCADA)"}
+        zone_name = args[0].upper()
+        cost = 30
+        if state.it_budget < cost:
+            return {"ok": False, "output": f"IT insuffisant ({int(state.it_budget)}/{cost} requis)."}
+        target_zone = next((z for z in (state.zones or []) if z.name == zone_name), None)
+        if not target_zone:
+            return {"ok": False, "output": f"Zone '{zone_name}' inconnue. Zones valides: DMZ, LAN, SRV, DB, SCADA"}
+        infected_in_zone = [n for n in state.nodes if n.zone_id == target_zone.id and n.infected and not n.quarantined]
+        if not infected_in_zone:
+            return {"ok": False, "output": f"Aucun noeud infecte dans la zone {zone_name}."}
+        for n in infected_in_zone:
+            n.quarantined = True
+        state.it_budget -= cost
+        return {"ok": True, "output": f"Isolation complete: {len(infected_in_zone)} noeud(s) mis en quarantaine dans {zone_name}. IT restant: {int(state.it_budget)}"}
+
+    if cmd == "analyze":
+        if not args:
+            return {"ok": False, "output": "Syntaxe: analyze <node_id>"}
+        try:
+            node_id = int(args[0])
+        except ValueError:
+            return {"ok": False, "output": "L'identifiant de noeud doit etre un entier."}
+        if not (0 <= node_id < len(state.nodes)):
+            return {"ok": False, "output": f"Noeud {node_id} introuvable."}
+        node      = state.nodes[node_id]
+        zone      = next((z for z in (state.zones or []) if z.id == node.zone_id), None)
+        zone_name = zone.name if zone else "?"
+        inf_nb    = [nid for nid in node.connections if state.nodes[nid].infected]
+        status    = "INFECTE" if node.infected else ("QUARANTAINE" if node.quarantined else ("PROTEGE" if node.honeypot else "SAIN"))
+        return {"ok": True, "output": (
+            f"Noeud {node_id} | Zone: {zone_name} | Statut: {status} | Type: {'ROUTEUR' if node.is_router else 'WORKSTATION'}\n"
+            f"Connexions: {len(node.connections)} | Voisins infectes: {len(inf_nb)} — {inf_nb}"
+        )}
+
+    if cmd == "log" and args and args[0].lower() == "suspicion":
+        return {"ok": True, "output": f"Suspicion: {round(state.suspicion, 1)}%. Patch deploye: {bool(state.patch_deployed)}."}
+
+    return {"ok": False, "output": f"Commande inconnue: {cmd}. Tapez 'help' pour la liste."}
+
+
+# ── Upgrades ──────────────────────────────────────────────────────────
 
 def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
     """Achete une amelioration si le joueur a les ressources et respecte les prerequis de tier."""

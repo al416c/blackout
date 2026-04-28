@@ -9,50 +9,43 @@ from typing import Optional, Any
 
 
 MALWARE_PROFILES = {
-<<<<<<< HEAD
-    "worm":       {"propagation": 0.20, "noise_per_machine": 1.5, "income_per_node": 1.0, "start_infected": 2},
-    "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5, "income_per_node": 1.2, "start_infected": 1},
-    "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2, "income_per_node": 2.5, "start_infected": 1},
-    "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 0.8, "start_infected": 1},
-=======
     "worm":       {"propagation": 0.20, "noise_per_machine": 1.5,  "income_per_node": 3.0, "start_infected": 2},
     "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5,  "income_per_node": 3.5, "start_infected": 1},
     "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2,  "income_per_node": 7.0, "start_infected": 1},
     "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 2.5, "start_infected": 1},
->>>>>>> origin/mateo
 }
 
-# Zones réseau disposées sur la carte (cx/cy en coordonnées canvas, r = rayon d'affichage)
+# Zones réseau disposées sur la carte (cx/cy en coordonnées monde, r = rayon d'affichage)
 ZONES_CONFIG = [
     {
         "id": 0, "name": "DMZ",   "label": "Zone Démilitarisée",
         "color": "#00ff88", "security": 1,
-        "cx": 160, "cy": 330, "r": 125,
-        "nodes": 5, "router": False, "sources": [],
+        "cx": 230, "cy": 580, "r": 210,
+        "nodes": 14, "router": False, "sources": [],
     },
     {
         "id": 1, "name": "LAN",   "label": "Réseau Corporate",
         "color": "#00aaff", "security": 2,
-        "cx": 450, "cy": 145, "r": 125,
-        "nodes": 6, "router": True, "sources": [0],
+        "cx": 830, "cy": 280, "r": 215,
+        "nodes": 16, "router": True, "sources": [0],
     },
     {
         "id": 2, "name": "SRV",   "label": "Serveurs Internes",
         "color": "#ffaa00", "security": 3,
-        "cx": 730, "cy": 285, "r": 115,
-        "nodes": 5, "router": True, "sources": [1],
+        "cx": 1480, "cy": 480, "r": 200,
+        "nodes": 13, "router": True, "sources": [1],
     },
     {
         "id": 3, "name": "DB",    "label": "Base de Données",
         "color": "#ff4444", "security": 4,
-        "cx": 685, "cy": 525, "r": 105,
-        "nodes": 4, "router": True, "sources": [2],
+        "cx": 1380, "cy": 1050, "r": 185,
+        "nodes": 10, "router": True, "sources": [2],
     },
     {
         "id": 4, "name": "SCADA", "label": "Infrastructure Critique",
         "color": "#dd00ff", "security": 5,
-        "cx": 390, "cy": 545, "r": 105,
-        "nodes": 3, "router": True, "sources": [0],
+        "cx": 720, "cy": 1060, "r": 185,
+        "nodes": 9, "router": True, "sources": [0],
     },
 ]
 
@@ -122,10 +115,7 @@ class GameState:
     zones: list = field(default_factory=list)
     total_nodes: int = 0
 
-<<<<<<< HEAD
     # Ressources joueur (Red Team)
-=======
->>>>>>> origin/mateo
     cpu_cycles: float = 50.0
     it_budget: float = 50.0
     blue_it_budget: float = 30.0

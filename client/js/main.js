@@ -35,6 +35,10 @@ const App = (() => {
         const btnSoloAI = document.getElementById('btn-solo-ai');
         if (btnSoloAI) {
             btnSoloAI.addEventListener('click', () => {
+                // Masquer le panneau Blue Team immédiatement — on joue Red Team en solo
+                document.getElementById('blue-panel')?.classList.add('hidden');
+                document.querySelector('.side-panel')?.classList.remove('hidden');
+                playerRole = 'red';
                 WS.send('create_room', {
                     malware_class: selectedMalware,
                     difficulty: selectedDifficulty,

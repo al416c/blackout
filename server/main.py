@@ -27,7 +27,7 @@ from server.database import (
 )
 from server.auth import register, login
 from server.game_state import create_new_game, GameState, DuoRoom
-from server.game_engine import process_tick, click_bubble, buy_upgrade, apply_blue_action
+from server.game_engine import process_tick, click_bubble, buy_upgrade, apply_blue_action, execute_command, execute_blue_command
 from server.blue_team_ai import BlueTeamAI
 
 
@@ -279,8 +279,11 @@ async def handler(ws):
                 state = _get_state(ws)
                 if not user or not state:
                     await send_json(ws, {"type": "command_result", "error": "Aucune partie active."}); continue
-                from server.game_engine import execute_command
-                result = execute_command(state, msg.get("line", ""))
+                role = _get_role(ws)
+                if role == "blue":
+                    result = execute_blue_command(state, msg.get("line", ""))
+                else:
+                    result = execute_command(state, msg.get("line", ""))
                 await send_json(ws, {"type": "command_result", **result})
 
             elif action == "click_bubble":

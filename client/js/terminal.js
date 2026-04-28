@@ -134,17 +134,21 @@ const Terminal = (() => {
 
     function handleStatus() {
         const s = Game.getState(); if (!s) return;
-        let out = `\n\x1b[1;36m═══ SYSTEM_STATUS ═══\x1b[0m\n`;
-        out += `Malware  : \x1b[1m${s.malware_class.toUpperCase()}\x1b[0m\n`;
-        out += `CPU      : \x1b[1;33m${Math.floor(s.cpu_cycles)}\x1b[0m Cycles\n`;
-        out += `Méfiance : \x1b[1;31m${Math.floor(s.suspicion)}%\x1b[0m\n`;
-        out += `Réseau   : ${s.infected_count}/${s.total_nodes} compromis\n`;
-        
-        // Stats de secteurs
-        const discovered = new Set(s.nodes.filter(n => n.infected).map(n => n.sector_id)).size;
-        out += `Secteurs : ${discovered}/17 découverts\n`;
-        if (s.porosity_mod > 0) out += `Porosité : +${(s.porosity_mod*100).toFixed(0)}% (SIGNAL_BOOST)\n`;
-        
+        const role = (typeof App !== 'undefined') ? App.getRole() : 'red';
+        let out = `\n\x1b[1;36m=== SYSTEM_STATUS ===\x1b[0m\n`;
+        if (role === 'blue') {
+            out += `Role     : \x1b[1;34mBLUE TEAM\x1b[0m\n`;
+            out += `IT Budget: \x1b[1;33m${Math.floor(s.it_budget)}\x1b[0m IT\n`;
+        } else {
+            out += `Malware  : \x1b[1m${(s.malware_class || '').toUpperCase()}\x1b[0m\n`;
+            out += `CPU      : \x1b[1;33m${Math.floor(s.cpu_cycles)}\x1b[0m Cycles\n`;
+        }
+        out += `Mefiance : \x1b[1;31m${Math.floor(s.suspicion)}%\x1b[0m\n`;
+        out += `Reseau   : ${s.infected_count}/${s.total_nodes} compromis\n`;
+        if (s.zones) {
+            const unlocked = s.zones.filter(z => z.unlocked).length;
+            out += `Zones    : ${unlocked}/${s.zones.length} accessibles\n`;
+        }
         print(out, 'system');
     }
 

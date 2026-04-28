@@ -29,16 +29,16 @@ const Game = (() => {
 
     function generateCity() {
         buildings = [];
-        for (let i = 0; i < 300; i++) {
+        for (let i = 0; i < 600; i++) {
             buildings.push({
-                x: Math.random() * 1200 - 100, y: Math.random() * 900 - 100,
+                x: Math.random() * 2200 - 200, y: Math.random() * 1600 - 200,
                 w: 12 + Math.random() * 22, h: 12 + Math.random() * 22,
                 type: 'small'
             });
         }
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 70; i++) {
             buildings.push({
-                x: Math.random() * 1000 - 50, y: Math.random() * 750 - 50,
+                x: Math.random() * 2000 - 100, y: Math.random() * 1400 - 100,
                 w: 70 + Math.random() * 100, h: 70 + Math.random() * 100,
                 type: 'large', details: Math.random() > 0.5 ? 'helipad' : 'none'
             });
@@ -93,9 +93,10 @@ const Game = (() => {
             Upgrades.loadUpgrades();
             generateCity();
             resizeCanvas();
-            // Centrer la vue sur le milieu du layout des zones
-            offsetX = canvas.width / 2 - 430 * zoom;
-            offsetY = canvas.height / 2 - 340 * zoom;
+            // Centrer la vue sur le milieu du layout des zones (monde ~1800x1200)
+            zoom = 0.58;
+            offsetX = canvas.width / 2 - 930 * zoom;
+            offsetY = canvas.height / 2 - 690 * zoom;
             updateHUD();
         });
 
