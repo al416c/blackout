@@ -7,3 +7,4 @@ blackout.db
 *.egg-info/
 dist/
 build/
+venv/
