@@ -456,6 +456,36 @@ input:focus { border-color: var(--accent); }
 .terminal-line.terminal-system {
     color: var(--text-dim);
 }
+.terminal-line.terminal-success { color: var(--green); }
+.terminal-line.terminal-error   { color: var(--red); }
+.terminal-line.terminal-highlight { color: var(--yellow); font-weight: bold; }
+
+/* Suggestions bar */
+#terminal-suggestions {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 242, 255, 0.05);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-bottom: 0.1rem;
+    overflow-x: auto;
+    border-left: 2px solid var(--green);
+}
+#terminal-suggestions.hidden { display: none; }
+.suggestion-item {
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: var(--mono);
+}
+.suggestion-item:hover, .suggestion-item.active {
+    color: var(--green);
+}
+.suggestion-item b {
+    color: var(--text);
+    text-decoration: underline;
+}
 
 #terminal-input-line {
     display: flex;

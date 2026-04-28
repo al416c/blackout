@@ -8,8 +8,11 @@ const Terminal = (() => {
     const MIN_HEIGHT = 160;
     const MAX_HEIGHT = 800;
 
-    let outputEl, inputEl, panelEl, resizeHandleEl;
+    let outputEl, inputEl, panelEl, resizeHandleEl, suggestionsEl;
     let history = [], historyIdx = -1;
+    let suggestions = [], selectedSuggestionIdx = -1;
+
+    const COMMANDS = ['help', 'status', 'shop', 'install', 'upgrade', 'zones', 'clear', 'hack', 'nmap', 'phishing', 'modules'];
 
     function clampHeight(height) { return Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, height)); }
     function applyPanelHeight(height) {
@@ -45,16 +48,60 @@ const Terminal = (() => {
         outputEl = document.getElementById('terminal-output');
         inputEl = document.getElementById('terminal-input');
         panelEl = document.getElementById('terminal-panel');
+        suggestionsEl = document.getElementById('terminal-suggestions');
         resizeHandleEl = document.getElementById('terminal-resize-handle');
         if (!outputEl || !inputEl || !panelEl) return;
 
         setupResizeControls();
 
         inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { handleCommand(); }
-            else if (e.key === 'Tab') { e.preventDefault(); handleAutocomplete(); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); handleHistory(-1); }
-            else if (e.key === 'ArrowDown') { e.preventDefault(); handleHistory(1); }
+            if (e.key === 'Enter') { 
+                if (selectedSuggestionIdx >= 0 && suggestions.length > 0) {
+                    e.preventDefault();
+                    applySuggestion(suggestions[selectedSuggestionIdx]);
+                } else {
+                    handleCommand(); 
+                }
+            }
+            else if (e.key === 'Tab') { 
+                e.preventDefault(); 
+                if (suggestions.length > 0) {
+                    selectedSuggestionIdx = (selectedSuggestionIdx + 1) % suggestions.length;
+                    renderSuggestions();
+                } else {
+                    handleAutocomplete(); 
+                }
+            }
+            else if (e.key === 'ArrowUp') { 
+                if (suggestions.length > 0) {
+                    e.preventDefault();
+                    selectedSuggestionIdx = (selectedSuggestionIdx - 1 + suggestions.length) % suggestions.length;
+                    renderSuggestions();
+                } else {
+                    e.preventDefault(); handleHistory(-1); 
+                }
+            }
+            else if (e.key === 'ArrowDown') { 
+                if (suggestions.length > 0) {
+                    e.preventDefault();
+                    selectedSuggestionIdx = (selectedSuggestionIdx + 1) % suggestions.length;
+                    renderSuggestions();
+                } else {
+                    e.preventDefault(); handleHistory(1); 
+                }
+            }
+            else if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                outputEl.innerHTML = '';
+                print('\x1b[2m--- UPLINK_ESTABLISHED // VECTOR: BLACKOUT ---\x1b[0m');
+            }
+            else if (e.key === 'Escape') {
+                clearSuggestions();
+            }
+        });
+
+        inputEl.addEventListener('input', () => {
+            updateSuggestions();
         });
 
         panelEl.addEventListener('click', () => inputEl.focus());
@@ -89,92 +136,101 @@ const Terminal = (() => {
     function handleCommand() {
         const line = inputEl.value.trim(); if (!line) return;
         history.push(line); historyIdx = -1;
-        print(`root@blackout:~# ${line}`);
+        print(`root@blackout:~# ${line}`, 'highlight');
         inputEl.value = '';
+        clearSuggestions();
 
-        const parts = line.split(' '), cmd = parts[0].toLowerCase(), args = parts.slice(1);
-        if (cmd === 'clear') outputEl.innerHTML = '';
-        else if (cmd === 'modules' || cmd === 'shop') print(Upgrades.getAvailableModulesText(), 'system');
-        else if (cmd === 'status') handleStatus();
-        else if (cmd === 'install') {
-            if (args.length === 0) print("Usage: install [id|nom]", "error");
-            else handleInstall(args[0]);
-        } else WS.send('command', { line });
-    }
-
-    function handleInstall(target) {
-        let up = Upgrades.getUpgradeById(target);
-        if (!up) up = Upgrades.matchUpgrade(target)[0];
-        
-        if (!up) { print(`[ERROR] Module '${target}' introuvable.`, "error"); return; }
-        
-        // Empêcher l'achat si déjà acquis
-        const s = Game.getState();
-        if (s?.purchased_upgrades.includes(up.id)) {
-            print(`[INFO] Module '${up.name}' déjà injecté.`, "system");
-            return;
-        }
-
-        // Calcul du coût avec bonus éventuels
-        let finalCost = up.cost;
-        // Si l'upgrade est de type gateway et qu'on a un discount (exemple théorique pour extensions futures)
-        // ... (logique à adapter selon besoin spécifique)
-
-        print(`[WAIT] Initialisation de l'injection du module '${up.name}'...`);
-        let prog = 0;
-        const iv = setInterval(() => {
-            prog += 25; const bar = '█'.repeat(prog/10).padEnd(10, '░');
-            print(`[PROG] Injection : [${bar}] ${prog}%`, 'system');
-            if (prog >= 100) { 
-                clearInterval(iv); 
-                WS.send('buy_upgrade', { upgrade_id: parseInt(up.id) }); 
-            }
-        }, 200);
-    }
-
-    function handleStatus() {
-        const s = Game.getState(); if (!s) return;
-        const role = (typeof App !== 'undefined') ? App.getRole() : 'red';
-        let out = `\n\x1b[1;36m=== SYSTEM_STATUS ===\x1b[0m\n`;
-        if (role === 'blue') {
-            out += `Role     : \x1b[1;34mBLUE TEAM\x1b[0m\n`;
-            out += `IT Budget: \x1b[1;33m${Math.floor(s.it_budget)}\x1b[0m IT\n`;
+        const parts = line.split(' '), cmd = parts[0].toLowerCase();
+        if (cmd === 'clear') {
+            outputEl.innerHTML = '';
+        } else if (cmd === 'modules' || cmd === 'shop') {
+            print(Upgrades.getAvailableModulesText(), 'system');
         } else {
-            out += `Malware  : \x1b[1m${(s.malware_class || '').toUpperCase()}\x1b[0m\n`;
-            out += `CPU      : \x1b[1;33m${Math.floor(s.cpu_cycles)}\x1b[0m Cycles\n`;
+            WS.send('command', { line });
         }
-        out += `Mefiance : \x1b[1;31m${Math.floor(s.suspicion)}%\x1b[0m\n`;
-        out += `Reseau   : ${s.infected_count}/${s.total_nodes} compromis\n`;
-        if (s.zones) {
-            const unlocked = s.zones.filter(z => z.unlocked).length;
-            out += `Zones    : ${unlocked}/${s.zones.length} accessibles\n`;
+    }
+
+    function updateSuggestions() {
+        const line = inputEl.value;
+        if (!line) { clearSuggestions(); return; }
+        
+        const parts = line.split(' ');
+        suggestions = [];
+
+        if (parts.length === 1) {
+            const cmdPart = parts[0].toLowerCase();
+            suggestions = COMMANDS.filter(c => c.startsWith(cmdPart)).map(c => ({ text: c, value: c + ' ' }));
+        } else if (parts.length === 2 && (parts[0].toLowerCase() === 'install' || parts[0].toLowerCase() === 'upgrade')) {
+            const matches = Upgrades.matchUpgrade(parts[1]);
+            suggestions = matches.map(m => ({ text: `${m.name} (${m.id})`, value: `${parts[0]} ${m.id}` }));
         }
-        print(out, 'system');
+
+        if (suggestions.length === 0) {
+            clearSuggestions();
+        } else {
+            selectedSuggestionIdx = -1;
+            renderSuggestions();
+        }
+    }
+
+    function renderSuggestions() {
+        if (!suggestionsEl) return;
+        suggestionsEl.classList.remove('hidden');
+        const lastPart = inputEl.value.split(' ').pop();
+        
+        suggestionsEl.innerHTML = suggestions.map((s, idx) => {
+            let displayText = s.text;
+            if (lastPart && s.text.toLowerCase().startsWith(lastPart.toLowerCase())) {
+                displayText = `<b>${s.text.substring(0, lastPart.length)}</b>${s.text.substring(lastPart.length)}`;
+            }
+            return `<div class="suggestion-item ${idx === selectedSuggestionIdx ? 'active' : ''}" data-idx="${idx}">${displayText}</div>`;
+        }).join('');
+
+        suggestionsEl.querySelectorAll('.suggestion-item').forEach(el => {
+            el.addEventListener('click', () => {
+                applySuggestion(suggestions[parseInt(el.dataset.idx)]);
+            });
+        });
+    }
+
+    function clearSuggestions() {
+        suggestions = [];
+        selectedSuggestionIdx = -1;
+        if (suggestionsEl) {
+            suggestionsEl.classList.add('hidden');
+            suggestionsEl.innerHTML = '';
+        }
+    }
+
+    function applySuggestion(s) {
+        inputEl.value = s.value;
+        clearSuggestions();
+        inputEl.focus();
     }
 
     function handleAutocomplete() {
         const line = inputEl.value;
-        const parts = line.split(' ');
-        
-        if (parts.length === 2 && parts[0].toLowerCase() === 'install') {
-            const matches = Upgrades.matchUpgrade(parts[1]);
-            if (matches.length === 1) {
-                inputEl.value = `install ${matches[0].name.toLowerCase().replace(/ /g, '_')}`;
-            } else if (matches.length > 1) {
-                print("Suggestions: " + matches.map(m => `\x1b[1m${m.name}\x1b[0m`).join(', '), 'system');
-            }
-        } else if (parts.length === 1) {
-            const cmds = ['help', 'status', 'modules', 'shop', 'install', 'clear', 'hack', 'nmap', 'ps', 'whoami'];
-            const matches = cmds.filter(c => c.startsWith(parts[0].toLowerCase()));
-            if (matches.length === 1) inputEl.value = matches[0] + ' ';
+        if (!line) {
+            suggestions = COMMANDS.map(c => ({ text: c, value: c + ' ' }));
+            renderSuggestions();
+            return;
+        }
+        updateSuggestions();
+        if (suggestions.length === 1) {
+            applySuggestion(suggestions[0]);
+        } else if (suggestions.length > 1) {
+            selectedSuggestionIdx = 0;
+            renderSuggestions();
         }
     }
+
 
     function handleHistory(dir) {
         if (history.length === 0) return;
         if (historyIdx === -1) historyIdx = history.length;
         historyIdx = Math.max(0, Math.min(history.length, historyIdx + dir));
         inputEl.value = (historyIdx < history.length) ? history[historyIdx] : '';
+        clearSuggestions();
     }
 
     function print(text, type = 'line') {

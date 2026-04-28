@@ -212,7 +212,7 @@
             <div id="terminal-header">
                 <span class="terminal-title">Terminal BLACKOUT</span>
                 <div class="terminal-header-right">
-                    <span class="terminal-hint">TAB: completion | ENTER: exec</span>
+                    <span class="terminal-hint">TAB: COMPLETE | CTRL+L: CLEAR | ENTER: EXEC</span>
                     <div class="terminal-resize-controls">
                         <button id="terminal-shrink" type="button" class="terminal-resize-btn" title="Réduire le terminal">-</button>
                         <button id="terminal-reset" type="button" class="terminal-resize-btn" title="Taille par défaut">□</button>
@@ -223,6 +223,7 @@
             <div id="terminal-resize-handle" title="Glissez pour redimensionner le terminal"></div>
             <div id="terminal-output"></div>
             <div class="terminal-log-hint">SYSTEM_LOG // METROPOLIS_GRID_SCAN</div>
+            <div id="terminal-suggestions" class="hidden"></div>
             <div id="terminal-input-line">
                 <span class="prompt">></span>
                 <input id="terminal-input" type="text" autocomplete="off" spellcheck="false" aria-label="Commande terminal"/>
