@@ -9,10 +9,10 @@ from typing import Optional, Any
 
 
 MALWARE_PROFILES = {
-    "worm":       {"propagation": 0.20, "noise_per_machine": 1.5,  "income_per_node": 3.0, "start_infected": 2},
-    "trojan":     {"propagation": 0.12, "noise_per_machine": 0.5,  "income_per_node": 3.5, "start_infected": 1},
-    "ransomware": {"propagation": 0.14, "noise_per_machine": 2.2,  "income_per_node": 7.0, "start_infected": 1},
-    "rootkit":    {"propagation": 0.06, "noise_per_machine": 0.15, "income_per_node": 2.5, "start_infected": 1},
+    "worm":       {"propagation": 0.04, "noise_per_machine": 1.6,  "income_per_node": 1.2, "start_infected": 1},
+    "trojan":     {"propagation": 0.02, "noise_per_machine": 0.4,  "income_per_node": 1.5, "start_infected": 1},
+    "ransomware": {"propagation": 0.03, "noise_per_machine": 2.2,  "income_per_node": 3.0, "start_infected": 1},
+    "rootkit":    {"propagation": 0.01, "noise_per_machine": 0.1,  "income_per_node": 1.0, "start_infected": 1},
 }
 
 # Zones réseau disposées sur la carte (cx/cy en coordonnées monde, r = rayon d'affichage)
@@ -49,8 +49,8 @@ ZONES_CONFIG = [
     },
 ]
 
-# Probabilité par tick d'infecter un routeur selon son niveau de sécurité
-ROUTER_INFECTION_CHANCE = {1: 0.25, 2: 0.16, 3: 0.10, 4: 0.06, 5: 0.03}
+# Probabilité par tick d'infecter un routeur (Hardened: 1% de base partout)
+ROUTER_INFECTION_CHANCE = {1: 0.01, 2: 0.01, 3: 0.01, 4: 0.01, 5: 0.01}
 
 
 @dataclass

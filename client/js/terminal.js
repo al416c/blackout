@@ -113,7 +113,7 @@ const Terminal = (() => {
         WS.on('command_result', (data) => {
             let type = 'system';
             if (data.output) {
-                if (data.output.includes('═══ MODULES')) type = 'shop';
+                if (data.output.includes('═══ MODULES D\'ÉVOLUTION')) type = 'shop';
                 else if (data.output.includes('BLACKOUT TERMINAL')) type = 'help';
             }
             
@@ -245,19 +245,35 @@ const Terminal = (() => {
 
     function print(text, type = 'line') {
         if (!outputEl) return;
-        const lines = String(text ?? '').split('\n');
-        lines.forEach(lt => {
-            const el = document.createElement('div'); el.className = `terminal-line terminal-${type}`;
-            lt = lt.replace(/\x1b\[1;31m/g, '<span style="color:#ff0055; font-weight:bold;">');
-            lt = lt.replace(/\x1b\[1;33m/g, '<span style="color:#ffcc00; font-weight:bold;">');
-            lt = lt.replace(/\x1b\[1;34m/g, '<span style="color:#00f2ff; font-weight:bold;">');
-            lt = lt.replace(/\x1b\[1;36m/g, '<span style="color:#00ff99; font-weight:bold;">');
-            lt = lt.replace(/\x1b\[1m/g, '<span style="font-weight:bold;">');
-            lt = lt.replace(/\x1b\[2m/g, '<span style="opacity:0.6;">');
-            lt = lt.replace(/\x1b\[0m/g, '</span>');
-            el.innerHTML = lt; outputEl.appendChild(el);
-        });
+        
+        // Treat 'shop' and 'help' as single blocks to avoid stacking multiple divs
+        if (type === 'shop' || type === 'help') {
+            const el = document.createElement('div');
+            el.className = `terminal-line terminal-${type}`;
+            el.innerHTML = formatText(text);
+            outputEl.appendChild(el);
+        } else {
+            const lines = String(text ?? '').split('\n');
+            lines.forEach(lt => {
+                const el = document.createElement('div');
+                el.className = `terminal-line terminal-${type}`;
+                el.innerHTML = formatText(lt);
+                outputEl.appendChild(el);
+            });
+        }
         outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    function formatText(text) {
+        let lt = String(text ?? '');
+        lt = lt.replace(/\x1b\[1;31m/g, '<span style="color:#ff0055; font-weight:bold;">');
+        lt = lt.replace(/\x1b\[1;33m/g, '<span style="color:#ffcc00; font-weight:bold;">');
+        lt = lt.replace(/\x1b\[1;34m/g, '<span style="color:#00f2ff; font-weight:bold;">');
+        lt = lt.replace(/\x1b\[1;36m/g, '<span style="color:#00ff99; font-weight:bold;">');
+        lt = lt.replace(/\x1b\[1m/g, '<span style="font-weight:bold;">');
+        lt = lt.replace(/\x1b\[2m/g, '<span style="opacity:0.6;">');
+        lt = lt.replace(/\x1b\[0m/g, '</span>');
+        return lt;
     }
 
     return { init, print };

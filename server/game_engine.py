@@ -10,6 +10,15 @@ import json
 from server.game_state import GameState, Bubble, MALWARE_PROFILES, ROUTER_INFECTION_CHANCE
 from server.database import get_all_upgrades, get_blueteam_events
 
+# Formatting constants for terminal output
+BOLD = "\x1b[1m"
+DIM  = "\x1b[2m"
+RESET = "\x1b[0m"
+RED = "\x1b[1;31m"
+YELLOW = "\x1b[1;33m"
+BLUE = "\x1b[1;34m"
+GREEN = "\x1b[1;36m"
+
 
 def _zones_by_id(state: GameState) -> dict:
     return {z.id: z for z in (state.zones or [])}
@@ -74,7 +83,8 @@ def process_tick(state: GameState) -> GameState:
     m_mod = state.propagation_mod
     ratio = m_saines / m_tot if m_tot > 0 else 0
 
-    n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult
+    # Propagation ralentie (multiplicateur global 0.7)
+    n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult * 0.7
     whole = int(n_inf)
     frac  = n_inf - whole
     new_infections = whole + (1 if random.random() < frac else 0)
@@ -114,7 +124,14 @@ def process_tick(state: GameState) -> GameState:
         if not zone:
             continue
         base_chance = ROUTER_INFECTION_CHANCE.get(zone.security_level, 0.05)
-        adjusted    = base_chance * (1.0 + state.propagation_mod) * propagation_mult
+        
+        # Le bonus de craquage de routeur (issu des upgrades de transmission)
+        # est crucial pour passer les zones de haut niveau.
+        crack_bonus = getattr(state, 'router_crack_bonus', 0.0)
+        
+        # Chance ajustée : prend en compte le modificateur global + le bonus spécifique aux routeurs
+        adjusted = (base_chance + crack_bonus) * (1.0 + state.propagation_mod * 0.5) * propagation_mult
+        
         if random.random() < adjusted:
             router.infected = True
 
@@ -130,19 +147,29 @@ def process_tick(state: GameState) -> GameState:
     state.cpu_cycles += state.passive_income_bonus
 
     # Budget Blue Team (régénération passive)
-    state.it_budget += state.healthy_count * 0.3
+    # Moins agressive si la suspicion est basse (< 20%)
+    ai_reactivity = 0.2 if state.suspicion < 20 else 0.5
+    state.it_budget += state.healthy_count * ai_reactivity
 
-    # Bruit et méfiance
+    # Bruit et méfiance : Croissance exponentielle douce
+    # Faible au début, augmente plus vite avec la taille du botnet
     b_machine          = profile["noise_per_machine"]
     stealth_factor     = max(0.05, 1.0 - state.stealth_mod)
-    b_total            = state.infected_count * b_machine * stealth_factor
-    suspicion_increase = b_total * 0.12 * suspicion_mult
-    state.suspicion    = min(100.0, state.suspicion + suspicion_increase)
+    
+    # Formule exponentielle : (nbe_noeuds ^ 1.3) pour un effet courbe
+    effective_noise    = (state.infected_count ** 1.3) * b_machine * 0.4
+    suspicion_increase = effective_noise * 0.15 * suspicion_mult
+    
+    # Réduction passive de suspicion (certaines upgrades pourraient booster ça)
+    passive_reduction  = getattr(state, 'passive_stealth_reduction', 0.05)
+    
+    state.suspicion    = max(0.0, min(100.0, state.suspicion + suspicion_increase - passive_reduction))
 
-    # Événements Blue Team automatiques
+    # Événements Blue Team automatiques : Seuils respectés
     blue_events = get_blueteam_events()
     for event in blue_events:
-        if state.suspicion >= event["trigger_threshold"]:
+        # L'IA ne déclenche rien si suspicion trop basse (< 25%) sauf si déjà en cours
+        if state.suspicion >= event["trigger_threshold"] and state.suspicion > 25:
             effect = event["effect_json"]
             eid    = event["id"]
             already_triggered = eid in state.triggered_events
@@ -386,27 +413,27 @@ def execute_command(state: GameState, line: str) -> dict:
         if "-sS" in flags and "-Pn" in flags:
             if _cd(state, "nmap_stealth") > 0:
                 return {"ok": False, "output": f"[nmap] Recharge — {_cd(state, 'nmap_stealth')}t restants."}
-            state.cpu_cycles += 8
-            state.suspicion = max(0, state.suspicion - 2.0)
+            state.cpu_cycles += 5
+            state.suspicion = max(0, state.suspicion - 1.5)
             _setcd(state, "nmap_stealth", 8)
-            return {"ok": True, "output": "Scan furtif terminé. (+8 CPU, méfiance -2%)"}
+            return {"ok": True, "output": "Scan furtif terminé. (+5 CPU, méfiance -1.5%)"}
         return {"ok": False, "output": "Usage: nmap -sS -Pn"}
 
     if cmd == "phishing" and args and args[0].lower() == "start":
         if _cd(state, "phishing") > 0:
             return {"ok": False, "output": f"[phishing] Recharge — {_cd(state, 'phishing')}t restants."}
-        gain = max(10, int(state.infected_count * 1.5))
+        gain = max(5, int(state.infected_count * 0.8))
         state.cpu_cycles += gain
-        _setcd(state, "phishing", 10)
+        _setcd(state, "phishing", 12)
         return {"ok": True, "output": f"Campagne réussie. (+{gain} CPU Cycles)"}
 
     if raw.lower().startswith("cat /etc/shadow"):
         if _cd(state, "shadow") > 0:
             return {"ok": False, "output": f"[shadow] Recharge — {_cd(state, 'shadow')}t restants."}
-        state.cpu_cycles += 20
-        state.suspicion = min(100, state.suspicion + 2.0)
-        _setcd(state, "shadow", 12)
-        return {"ok": True, "output": "Hashes extraits. (+20 CPU, méfiance +2.0%)"}
+        state.cpu_cycles += 12
+        state.suspicion = min(100, state.suspicion + 3.0)
+        _setcd(state, "shadow", 15)
+        return {"ok": True, "output": "Hashes extraits. (+12 CPU, méfiance +3.0%)"}
 
     if cmd in ("install", "upgrade"):
         if not args: return {"ok": False, "output": f"Usage: {cmd} <nom|id>"}
@@ -498,16 +525,10 @@ def execute_blue_command(state: GameState, line: str) -> dict:
         ]
         title = "BLUE TEAM DEFENSIVE PROTOCOLS"
         cmd_w = max(len(r[0]) for r in rows)
-        lines = [f"{name.ljust(cmd_w)} — {desc}" for name, desc in rows]
+        lines = [f"{BOLD}{name.ljust(cmd_w)}{RESET} — {desc}" for name, desc in rows]
         
-        # Calculate width based on lines and title
-        inner_w = max(len(title), *(len(l) for l in lines))
-        
-        sep = "+" + "-" * (inner_w + 2) + "+"
-        boxed = [sep, f"| {title.ljust(inner_w)} |", sep]
-        boxed += [f"| {l.ljust(inner_w)} |" for l in lines]
-        boxed.append(sep)
-        return {"ok": True, "output": "\n".join(boxed)}
+        output = f"{BOLD}{title}{RESET}\n" + "\n".join(lines)
+        return {"ok": True, "output": output}
 
     if cmd in ("status", "statut"):
         unlocked = sum(1 for z in state.zones if z.unlocked) if state.zones else 0
@@ -682,6 +703,24 @@ def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
         state.income_mod           += effect["income_bonus"]
     if "passive_income" in effect:
         state.passive_income_bonus += effect["passive_income"]
+    
+    # Bonus spécial pour le craquage de routeurs (protection bypass)
+    # Les modules de branche "transmission" donnent un bonus cumulatif important (+10%)
+    if upgrade["branch"] == "transmission":
+        if not hasattr(state, 'router_crack_bonus'):
+            state.router_crack_bonus = 0.0
+        state.router_crack_bonus += 0.10
+
+    # Bonus spécial pour la réduction de méfiance passive
+    if "suspicion_reduction" in effect:
+        if not hasattr(state, 'passive_stealth_reduction'):
+            state.passive_stealth_reduction = 0.0
+        state.passive_stealth_reduction += effect["suspicion_reduction"]
+
+    # Réduction immédiate de suspicion
+    if "immediate_suspicion_cut" in effect:
+        state.suspicion = max(0.0, state.suspicion - effect["immediate_suspicion_cut"])
+
     state.stealth_mod += upgrade.get("stealth_mod", 0)
 
     return {"ok": True, "upgrade": upgrade["name"], "remaining_cycles": round(state.cpu_cycles, 1)}

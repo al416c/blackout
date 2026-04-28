@@ -6,13 +6,21 @@
 const Upgrades = (() => {
     let allUpgrades = [];
     let purchasedIds = [];
+    let isShopPending = false;
 
     const BRANCH_LABELS = { transmission: 'Transmission', symptomes: 'Symptômes', capacites: 'Capacités' };
     const BRANCH_COLORS = { transmission: '\x1b[1;31m', symptomes: '\x1b[1;33m', capacites: '\x1b[1;34m' };
     const RESET = '\x1b[0m', BOLD = '\x1b[1m', DIM = '\x1b[2m';
 
     function init() {
-        WS.on('upgrades_list', (data) => { allUpgrades = data.data || []; });
+        WS.on('upgrades_list', (data) => { 
+            console.log('[UPGRADES] Received list:', data.data?.length);
+            allUpgrades = data.data || []; 
+            if (isShopPending) {
+                isShopPending = false;
+                Terminal.print(getAvailableModulesText(), 'shop');
+            }
+        });
         WS.on('upgrade_result', (data) => {
             if (data.ok) Terminal.print(`[SUCCESS] Module '${data.upgrade}' actif.`, 'system');
             else Terminal.print(`[ERROR] ${data.error}`, 'system');
@@ -24,6 +32,7 @@ const Upgrades = (() => {
 
     function getAvailableModulesText() {
         if (allUpgrades.length === 0) {
+            isShopPending = true;
             loadUpgrades();
             return "\n[SYSTEM] Synchronizing modules with central database... Please wait.\n";
         }
@@ -37,7 +46,8 @@ const Upgrades = (() => {
 
         for (const [branch, upgrades] of Object.entries(branches)) {
             const color = BRANCH_COLORS[branch] || RESET;
-            out += `${color}--- ${BRANCH_LABELS[branch].toUpperCase()} ---${RESET}\n`;
+            const label = BRANCH_LABELS[branch] || branch;
+            out += `${color}--- ${label.toUpperCase()} ---${RESET}\n`;
             out += HEADER;
             out += SEP;
             

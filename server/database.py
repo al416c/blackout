@@ -152,14 +152,14 @@ def _seed_upgrades(cur: sqlite3.Cursor):
 
         # ── Capacités ──
         ("Payload polymorphe", "capacites", 1, 90,
-         {"stealth": 0.15, "allowed_malware": ["worm"]},
+         {"stealth": 0.15, "immediate_suspicion_cut": 10.0, "allowed_malware": ["worm"]},
          0.15,
-         "Le ver change de signature binaire à chaque réplication, échappant aux antivirus."),
+         "Le ver change de signature binaire à chaque réplication, réduisant la suspicion de 10%."),
 
         ("Communication P2P", "capacites", 2, 185,
-         {"stealth": 0.10, "propagation_bonus": 0.05, "allowed_malware": ["worm"]},
+         {"stealth": 0.10, "propagation_bonus": 0.05, "suspicion_reduction": 0.05, "allowed_malware": ["worm"]},
          0.10,
-         "Les instances communiquent en peer-to-peer, rendant le réseau C2 résilient et décentralisé."),
+         "Réseau C2 résilient réduisant passivement la méfiance de 0.05% par tick."),
 
         # ════════════════════════════════════════════════════════════
         # TROJAN — Discret, contourne les défenses
@@ -172,41 +172,41 @@ def _seed_upgrades(cur: sqlite3.Cursor):
          "Documents Office contenant une macro malveillante signée, difficile à détecter."),
 
         ("Mouvement latéral RDP", "transmission", 2, 150,
-         {"propagation_bonus": 0.10, "allowed_malware": ["trojan"]},
+         {"propagation_bonus": 0.10, "immediate_suspicion_cut": 15.0, "allowed_malware": ["trojan"]},
          -0.05,
-         "Utilise des identifiants RDP compromis pour pivoter silencieusement entre les machines."),
+         "Identifiants compromis permettant de pivoter, réduit la suspicion de 15%."),
 
         ("Watering Hole", "transmission", 3, 240,
          {"propagation_bonus": 0.14, "stealth": 0.05, "allowed_malware": ["trojan"]},
          0.05,
-         "Compromet un site web légitime fréquenté par les cibles pour les infecter à leur insu."),
+         "Compromet un site web légitime pour une infection à l'insu de tous."),
 
         # ── Symptômes ──
         ("Keylogger furtif", "symptomes", 1, 100,
          {"income_bonus": 0.06, "stealth": 0.05, "allowed_malware": ["trojan"]},
          0.05,
-         "Enregistre les frappes clavier en temps réel sans déclencher la moindre alerte."),
+         "Enregistre les frappes clavier sans déclencher d'alerte."),
 
         ("Exfiltration DNS", "symptomes", 2, 180,
-         {"passive_income": 3, "stealth": 0.10, "allowed_malware": ["trojan"]},
+         {"passive_income": 3, "stealth": 0.10, "suspicion_reduction": 0.1, "allowed_malware": ["trojan"]},
          0.10,
-         "Exfiltre les données via des requêtes DNS encodées, quasi indétectable par les pare-feux."),
+         "Exfiltre via DNS, réduisant passivement la suspicion de 0.1% par tick."),
 
         ("Vol de credentials", "symptomes", 3, 270,
-         {"income_bonus": 0.10, "allowed_malware": ["trojan"]},
+         {"income_bonus": 0.10, "immediate_suspicion_cut": 20.0, "allowed_malware": ["trojan"]},
          -0.05,
-         "Extraction massive des mots de passe stockés dans les navigateurs et gestionnaires."),
+         "Extraction massive de mots de passe, réduit la suspicion de 20%."),
 
         # ── Capacités ──
         ("Certificat SSL volé", "capacites", 1, 110,
-         {"stealth": 0.20, "allowed_malware": ["trojan"]},
+         {"stealth": 0.20, "suspicion_reduction": 0.15, "allowed_malware": ["trojan"]},
          0.20,
-         "Signe le binaire du trojan avec un certificat numérique légitime volé."),
+         "Signe le binaire avec un certificat volé, -0.15% suspicion/tick."),
 
         ("Backdoor persistante", "capacites", 2, 210,
-         {"stealth": 0.15, "propagation_bonus": 0.03, "allowed_malware": ["trojan"]},
+         {"stealth": 0.15, "immediate_suspicion_cut": 25.0, "allowed_malware": ["trojan"]},
          0.15,
-         "Installe un accès distant persistant survivant aux redémarrages et mises à jour."),
+         "Accès distant persistant, réduit immédiatement la suspicion de 25%."),
 
         # ════════════════════════════════════════════════════════════
         # RANSOMWARE — Revenus massifs, détection rapide
@@ -216,44 +216,44 @@ def _seed_upgrades(cur: sqlite3.Cursor):
         ("Propagation ver-ransom", "transmission", 1, 100,
          {"propagation_bonus": 0.12, "allowed_malware": ["ransomware"]},
          -0.15,
-         "Combine techniques de ver et chiffrement pour se propager et verrouiller rapidement."),
+         "Combine techniques de ver et chiffrement pour se propager rapidement."),
 
         ("Exploitation EternalBlue", "transmission", 2, 185,
          {"propagation_bonus": 0.18, "allowed_malware": ["ransomware"]},
          -0.20,
-         "Utilise la faille NSA EternalBlue pour envahir tout le réseau en quelques ticks."),
+         "Utilise EternalBlue pour envahir tout le réseau en quelques ticks."),
 
         ("Phishing ciblé", "transmission", 3, 260,
          {"propagation_bonus": 0.15, "stealth": 0.05, "allowed_malware": ["ransomware"]},
          0.05,
-         "Campagne de spear-phishing ultra ciblée avec des leurres personnalisés."),
+         "Campagne de spear-phishing ultra ciblée."),
 
         # ── Symptômes ──
         ("Chiffrement partiel", "symptomes", 1, 75,
          {"passive_income": 2, "allowed_malware": ["ransomware"]},
          -0.08,
-         "Chiffre partiellement les fichiers pour commencer l'extorsion rapidement."),
+         "Chiffre partiellement les fichiers pour commencer l'extorsion."),
 
         ("Chiffrement AES-256", "symptomes", 2, 165,
          {"income_bonus": 0.12, "allowed_malware": ["ransomware"]},
          -0.15,
-         "Chiffrement militaire rendant les données irrécupérables sans la clé."),
+         "Chiffrement militaire rendant les données irrécupérables."),
 
         ("Double extorsion", "symptomes", 3, 285,
          {"passive_income": 6, "allowed_malware": ["ransomware"]},
          -0.25,
-         "Menace de publier les données volées en plus du chiffrement — pression maximale."),
+         "Menace de publier les données volées — pression maximale."),
 
         # ── Capacités ──
         ("Obfuscation du binaire", "capacites", 1, 120,
-         {"stealth": 0.15, "allowed_malware": ["ransomware"]},
+         {"stealth": 0.15, "immediate_suspicion_cut": 5.0, "allowed_malware": ["ransomware"]},
          0.15,
-         "Techniques de packing et d'obfuscation rendant l'analyse statique difficile."),
+         "Techniques d'obfuscation réduisant la suspicion de 5%."),
 
         ("Canal C2 via Tor", "capacites", 2, 225,
-         {"stealth": 0.25, "allowed_malware": ["ransomware"]},
+         {"stealth": 0.25, "suspicion_reduction": 0.08, "allowed_malware": ["ransomware"]},
          0.25,
-         "Communications via le réseau Tor pour masquer totalement l'infrastructure de commande."),
+         "Communications via Tor réduisant passivement la suspicion de 0.08%/tick."),
 
         # ════════════════════════════════════════════════════════════
         # ROOTKIT — Quasi-invisible, propagation lente
@@ -268,39 +268,39 @@ def _seed_upgrades(cur: sqlite3.Cursor):
         ("Infection bootloader", "transmission", 2, 180,
          {"propagation_bonus": 0.08, "stealth": 0.15, "allowed_malware": ["rootkit"]},
          0.15,
-         "S'installe dans le MBR/UEFI, survivant aux reformatages complets du disque."),
+         "S'installe dans le MBR/UEFI pour une furtivité accrue."),
 
         ("Supply chain injection", "transmission", 3, 285,
-         {"propagation_bonus": 0.10, "stealth": 0.10, "allowed_malware": ["rootkit"]},
+         {"propagation_bonus": 0.10, "immediate_suspicion_cut": 15.0, "allowed_malware": ["rootkit"]},
          0.10,
-         "Compromet la chaîne d'approvisionnement logicielle pour une infection à la source."),
+         "Compromet la chaîne d'approvisionnement, -15% suspicion."),
 
         # ── Symptômes ──
         ("Keylogger noyau", "symptomes", 1, 105,
          {"income_bonus": 0.04, "stealth": 0.10, "allowed_malware": ["rootkit"]},
          0.10,
-         "Intercepte les frappes au niveau kernel, totalement transparent pour l'utilisateur."),
+         "Intercepte les frappes au niveau kernel."),
 
         ("Capture mémoire", "symptomes", 2, 195,
-         {"passive_income": 3, "stealth": 0.05, "allowed_malware": ["rootkit"]},
+         {"passive_income": 3, "suspicion_reduction": 0.2, "allowed_malware": ["rootkit"]},
          0.05,
-         "Lit la mémoire vive pour extraire mots de passe, clés de chiffrement et tokens."),
+         "Lit la mémoire, réduit passivement la suspicion de 0.2% par tick."),
 
         ("Proxy SOCKS caché", "symptomes", 3, 260,
-         {"passive_income": 5, "allowed_malware": ["rootkit"]},
+         {"passive_income": 5, "immediate_suspicion_cut": 10.0, "allowed_malware": ["rootkit"]},
          0.00,
-         "Transforme la machine en proxy anonyme revendu sur le dark web."),
+         "Transforme la machine en proxy, -10% suspicion."),
 
         # ── Capacités ──
         ("Hooking système", "capacites", 1, 120,
-         {"stealth": 0.25, "allowed_malware": ["rootkit"]},
+         {"stealth": 0.25, "suspicion_reduction": 0.3, "allowed_malware": ["rootkit"]},
          0.25,
-         "Intercepte et modifie les appels système pour cacher toute trace du rootkit."),
+         "Modifie les appels système, -0.3% suspicion par tick."),
 
         ("Mode fantôme", "capacites", 2, 240,
-         {"stealth": 0.35, "allowed_malware": ["rootkit"]},
+         {"stealth": 0.35, "immediate_suspicion_cut": 40.0, "allowed_malware": ["rootkit"]},
          0.35,
-         "Le rootkit devient quasi invisible à tout outil de détection — furtivité maximale."),
+         "Le rootkit devient quasi invisible, -40% suspicion."),
 
     ]
     for name, branch, tier, cost, effect, stealth, desc in upgrades:
