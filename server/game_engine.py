@@ -342,7 +342,10 @@ def execute_command(state: GameState, line: str) -> dict:
         title = f"BLACKOUT TERMINAL — {mc.upper()} PROTOCOLS"
         cmd_w = max(len(r[0]) for r in rows)
         lines = [f"{name.ljust(cmd_w)} — {desc}" for name, desc in rows]
+        
+        # Calculate width based on lines and title
         inner_w = max(len(title), *(len(l) for l in lines))
+        
         sep = "+" + "-" * (inner_w + 2) + "+"
         boxed = [sep, f"| {title.ljust(inner_w)} |", sep]
         boxed += [f"| {l.ljust(inner_w)} |" for l in lines]
@@ -350,6 +353,7 @@ def execute_command(state: GameState, line: str) -> dict:
         return {"ok": True, "output": "\n".join(boxed)}
 
     # ── Commandes de base ─────────────────────────────────────────────
+
     if cmd in ("status", "statut"):
         hack_str = "PRÊT" if state.special_cooldown <= 0 else f"{state.special_cooldown}t"
         unlocked = sum(1 for z in state.zones if z.unlocked) if state.zones else 0
@@ -408,7 +412,20 @@ def execute_command(state: GameState, line: str) -> dict:
         if not args: return {"ok": False, "output": f"Usage: {cmd} <nom|id>"}
         target = " ".join(args).lower()
         upgrades = get_all_upgrades()
-        found = next((u for u in upgrades if target in u["name"].lower() or target == str(u["id"])), None)
+        
+        # Try finding by name or ID (explicit ID check)
+        found = None
+        for u in upgrades:
+            if target in u["name"].lower():
+                found = u
+                break
+            try:
+                if int(target) == u["id"]:
+                    found = u
+                    break
+            except ValueError:
+                pass
+
         if not found: return {"ok": False, "output": f"Module '{target}' inconnu."}
         
         res = buy_upgrade(state, found["id"])
@@ -482,7 +499,10 @@ def execute_blue_command(state: GameState, line: str) -> dict:
         title = "BLUE TEAM DEFENSIVE PROTOCOLS"
         cmd_w = max(len(r[0]) for r in rows)
         lines = [f"{name.ljust(cmd_w)} — {desc}" for name, desc in rows]
+        
+        # Calculate width based on lines and title
         inner_w = max(len(title), *(len(l) for l in lines))
+        
         sep = "+" + "-" * (inner_w + 2) + "+"
         boxed = [sep, f"| {title.ljust(inner_w)} |", sep]
         boxed += [f"| {l.ljust(inner_w)} |" for l in lines]

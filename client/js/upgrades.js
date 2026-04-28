@@ -25,7 +25,7 @@ const Upgrades = (() => {
     function getAvailableModulesText() {
         if (allUpgrades.length === 0) {
             loadUpgrades();
-            return "UPLINK_ERROR: No modules found. Synchronizing with central database...";
+            return "\n[SYSTEM] Synchronizing modules with central database... Please wait.\n";
         }
         let out = `\n${BOLD}═══ MODULES D'ÉVOLUTION ═══${RESET}\n\n`;
         const branches = {};
