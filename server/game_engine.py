@@ -1,33 +1,27 @@
 """
-<<<<<<< HEAD
 Moteur de jeu BLACKOUT — logique de chaque tick.
 
-Propagation : N_inf = M_inf * (T_inf + M_mod) * (M_saines / M_totales) * diff_mult
-Zones       : les noeuds d'une zone verrouillée ne peuvent pas être infectés normalement.
+Propagation : les noeuds d'une zone verrouillée ne peuvent pas être infectés normalement.
               Seul le routeur de la zone peut être cracké (chance indépendante par tick).
               Infecter le routeur déverrouille la zone.
-=======
-Moteur de jeu BLACKOUT — Logique de tick et commandes.
->>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 """
 import random
 import json
 from server.game_state import GameState, Bubble, MALWARE_PROFILES, ROUTER_INFECTION_CHANCE
 from server.database import get_all_upgrades, get_blueteam_events
 
-<<<<<<< HEAD
 
 def _zones_by_id(state: GameState) -> dict:
     return {z.id: z for z in (state.zones or [])}
 
 
 def _unlocked_candidates(state: GameState) -> list:
-    """Noeuds sains dans des zones déverrouillées (utile pour les capacités spéciales)."""
+    """Noeuds sains dans des zones déverrouillées (pour les capacités spéciales)."""
     zmap = _zones_by_id(state)
     return [
         n for n in state.nodes
         if not n.infected and not n.quarantined and not n.honeypot
-        and (not zmap or zmap.get(n.zone_id, None) is None or zmap[n.zone_id].unlocked)
+        and (not zmap or zmap.get(n.zone_id) is None or zmap[n.zone_id].unlocked)
     ]
 
 
@@ -43,34 +37,15 @@ def process_tick(state: GameState) -> GameState:
     for key in list(state.command_cooldowns.keys()):
         if state.command_cooldowns[key] > 0:
             state.command_cooldowns[key] -= 1
-=======
-def process_tick(state: GameState):
-    if state.result: return state
-    state.tick += 1
-    if state.special_cooldown > 0: state.special_cooldown -= 1
-    for k in list(state.command_cooldowns.keys()):
-        if state.command_cooldowns[k] > 0: state.command_cooldowns[k] -= 1
->>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 
     profile = MALWARE_PROFILES[state.malware_class]
     m_tot = state.total_nodes
-    if m_tot == 0: return state
+    if m_tot == 0:
+        return state
 
-<<<<<<< HEAD
     m_inf    = state.infected_count
     m_saines = state.healthy_count
-    m_totales = state.total_nodes
-=======
-    # Difficulté
-    d = (state.difficulty or "normal").lower()
-    s_m, i_m, p_m, c_r = (0.5, 1.4, 1.15, 0.1) if d=="facile" else (1.55, 0.8, 0.85, 0.28) if d=="difficile" else (1, 1, 1, 0.18)
->>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a
 
-    # Propagation
-    n_inf_val = state.infected_count * (profile["propagation"] + state.propagation_mod) * (state.healthy_count/m_tot) * p_m * 0.25
-    new_inf = int(n_inf_val) + (1 if random.random() < (n_inf_val - int(n_inf_val)) else 0)
-
-<<<<<<< HEAD
     diff = (state.difficulty or "normal").lower()
     if diff == "facile":
         suspicion_mult        = 0.50
@@ -88,21 +63,21 @@ def process_tick(state: GameState):
         propagation_mult      = 1.00
         difficulty_clean_rate = 0.18
 
-    # ── Calcul du nombre de nouvelles infections ce tick ─────────────
+    # Nombre de nouvelles infections ce tick
     t_inf = profile["propagation"]
     m_mod = state.propagation_mod
-    ratio = m_saines / m_totales if m_totales > 0 else 0
+    ratio = m_saines / m_tot if m_tot > 0 else 0
 
     n_inf = m_inf * (t_inf + m_mod) * ratio * propagation_mult
     whole = int(n_inf)
     frac  = n_inf - whole
     new_infections = whole + (1 if random.random() < frac else 0)
 
-    # ── Propagation avec gestion des zones ───────────────────────────
+    # Propagation avec gestion des zones
     zmap = _zones_by_id(state)
 
-    normal_candidates: set[int] = set()   # noeuds dans zones déverrouillées
-    router_candidates: set[int] = set()   # routeurs de zones verrouillées
+    normal_candidates: set = set()   # noeuds dans zones déverrouillées
+    router_candidates: set = set()   # routeurs de zones verrouillées
 
     for node in state.nodes:
         if node.infected and not node.quarantined:
@@ -117,7 +92,7 @@ def process_tick(state: GameState):
                         # Zone verrouillée : seul le routeur peut être attaqué
                         if neighbor.is_router:
                             router_candidates.add(neighbor_id)
-                        continue  # autres noeuds inaccessibles
+                        continue
 
                 normal_candidates.add(neighbor_id)
 
@@ -144,22 +119,22 @@ def process_tick(state: GameState):
             if state.nodes[zone.router_id].infected:
                 zone.unlocked = True
 
-    # ── Revenus Red Team ──────────────────────────────────────────────
+    # Revenus Red Team
     income = profile["income_per_node"]
     state.cpu_cycles += state.infected_count * (income + state.income_mod) * 0.15 * income_mult
     state.cpu_cycles += state.passive_income_bonus
 
-    # ── Budget Blue Team (regénération passive) ───────────────────────
+    # Budget Blue Team (régénération passive)
     state.it_budget += state.healthy_count * 0.3
 
-    # ── Bruit et méfiance ─────────────────────────────────────────────
-    b_machine = profile["noise_per_machine"]
-    stealth_factor    = max(0.05, 1.0 - state.stealth_mod)
-    b_total           = state.infected_count * b_machine * stealth_factor
+    # Bruit et méfiance
+    b_machine          = profile["noise_per_machine"]
+    stealth_factor     = max(0.05, 1.0 - state.stealth_mod)
+    b_total            = state.infected_count * b_machine * stealth_factor
     suspicion_increase = b_total * 0.12 * suspicion_mult
-    state.suspicion   = min(100.0, state.suspicion + suspicion_increase)
+    state.suspicion    = min(100.0, state.suspicion + suspicion_increase)
 
-    # ── Événements Blue Team automatiques ────────────────────────────
+    # Événements Blue Team automatiques
     blue_events = get_blueteam_events()
     for event in blue_events:
         if state.suspicion >= event["trigger_threshold"]:
@@ -171,8 +146,7 @@ def process_tick(state: GameState):
                 healthy_nodes = [
                     n for n in state.nodes
                     if not n.infected and not n.quarantined
-                    and (not zmap or zmap.get(n.zone_id, None) is None
-                         or zmap[n.zone_id].unlocked)
+                    and (not zmap or zmap.get(n.zone_id) is None or zmap[n.zone_id].unlocked)
                 ]
                 if healthy_nodes:
                     random.choice(healthy_nodes).honeypot = True
@@ -195,7 +169,7 @@ def process_tick(state: GameState):
                 if eid not in state.triggered_events:
                     state.triggered_events.append(eid)
 
-    # ── Patch de sécurité automatique (méfiance = 100%) ──────────────
+    # Patch de sécurité automatique (méfiance = 100%)
     if state.suspicion >= 100.0 and not state.patch_deployed:
         state.patch_deployed = True
         state.clean_rate     = difficulty_clean_rate
@@ -225,25 +199,31 @@ def process_tick(state: GameState):
 
 
 def _spawn_bubbles(state: GameState):
-    """Fait apparaitre des bulles cliquables."""
-    if random.random() < 0.18:
+    """Fait apparaître des bulles cliquables près des noeuds infectés."""
+    if random.random() < 0.25:
+        infected = [n for n in state.nodes if n.infected and not n.quarantined]
+        if infected:
+            anc = random.choice(infected)
+            x = round(anc.x + random.uniform(-50, 50), 1)
+            y = round(anc.y + random.uniform(-50, 50), 1)
+        else:
+            x = round(random.uniform(80, 800), 1)
+            y = round(random.uniform(80, 600), 1)
         kind  = random.choice(["breach", "exfiltration"])
         value = random.randint(6, 18)
         state.bubbles.append(Bubble(
-            id=state.next_bubble_id,
-            x=round(random.uniform(50, 850), 1),
-            y=round(random.uniform(50, 650), 1),
+            id=state.next_bubble_id, x=x, y=y,
             kind=kind, value=value, ttl=5,
         ))
         state.next_bubble_id += 1
 
-    if random.random() < 0.15:
+    if random.random() < 0.12:
         kind  = random.choice(["log_analysis", "patch_deploy"])
         value = random.randint(3, 12)
         state.bubbles.append(Bubble(
             id=state.next_bubble_id,
-            x=round(random.uniform(50, 850), 1),
-            y=round(random.uniform(50, 650), 1),
+            x=round(random.uniform(80, 800), 1),
+            y=round(random.uniform(80, 600), 1),
             kind=kind, value=value, ttl=5,
         ))
         state.next_bubble_id += 1
@@ -428,7 +408,8 @@ def execute_command(state: GameState, line: str) -> dict:
                 if zone.router_id is not None:
                     rtr = state.nodes[zone.router_id]
                     rtr_status = "INFECTE" if rtr.infected else "protege"
-                    status += f" — routeur: {rtr_status}"
+                    chance = round(ROUTER_INFECTION_CHANCE.get(zone.security_level, 0.05) * 100, 1)
+                    status += f" — routeur: {rtr_status} (~{chance}%/tick)"
             lines.append(f"  [{zone.name}] {zone.label} — {status}")
         return {"ok": True, "output": "\n".join(lines)}
 
@@ -773,71 +754,6 @@ def buy_upgrade(state: GameState, upgrade_id: int) -> dict:
         state.income_mod           += effect["income_bonus"]
     if "passive_income" in effect:
         state.passive_income_bonus += effect["passive_income"]
-    state.stealth_mod += upgrade["stealth_mod"]
+    state.stealth_mod += upgrade.get("stealth_mod", 0)
 
     return {"ok": True, "upgrade": upgrade["name"], "remaining_cycles": round(state.cpu_cycles, 1)}
-=======
-    cand = []
-    for node in state.nodes:
-        if node.infected and not node.quarantined:
-            for nid in node.connections:
-                nb = state.nodes[nid]
-                if not nb.infected and not nb.quarantined and not nb.honeypot:
-                    if node.sector_id == nb.sector_id: cand.append(nid)
-                    elif node.is_gateway or random.random() < (0.01 + state.porosity_mod): cand.append(nid)
-
-    if cand and new_inf > 0:
-        for nid in random.sample(cand, min(new_inf, len(set(cand)))): state.nodes[nid].infected = True
-
-    # Ressources
-    state.cpu_cycles += state.infected_count * (profile["income_per_node"] + state.income_mod) * 0.025 * i_m + state.passive_income_bonus
-    state.it_budget += state.healthy_count * 0.3
-
-    # Méfiance
-    stealth = max(0.05, 1.0 - state.stealth_mod)
-    state.suspicion = min(100.0, state.suspicion + (state.infected_count * profile["noise_per_machine"] * stealth * 0.12 * s_m) / 3.0)
-
-    # Patch
-    if state.suspicion >= 100.0 and not state.patch_deployed:
-        state.patch_deployed = True; state.clean_rate = c_r
-    if state.patch_deployed:
-        to_cl = [n for n in state.nodes if n.infected and not n.quarantined]
-        if to_cl:
-            for n in random.sample(to_cl, min(max(1, round(len(to_cl)*state.clean_rate)), len(to_cl))): n.infected = False
-
-    _spawn_bubbles(state)
-    state.bubbles = [b for b in state.bubbles if b.ttl > 0]
-    for b in state.bubbles: b.ttl -= 1
-    state.score = state.tick * 10 + state.infected_count * 5
-    if state.healthy_count == 0: state.result = "victory"
-    elif state.infected_count == 0: state.result = "defeat"
-    return state
-
-def _spawn_bubbles(state):
-    inf = [n for n in state.nodes if n.infected and not n.quarantined]
-    if random.random() < 0.35:
-        anc = random.choice(inf) if inf else type('N',(),{'x':450,'y':350})()
-        state.bubbles.append(Bubble(id=state.next_bubble_id, x=round(anc.x+random.uniform(-40,40),1), y=round(anc.y+random.uniform(-40,40),1), kind=random.choice(["breach","exfiltration"]), value=random.randint(6,18), ttl=10))
-        state.next_bubble_id += 1
-
-def click_bubble(state, bid):
-    for i, b in enumerate(state.bubbles):
-        if b.id == bid:
-            if b.kind in ("breach","exfiltration"): state.cpu_cycles += b.value; res = {"type":"attacker","gained":b.value}
-            else: state.suspicion = min(100.0, state.suspicion + b.value*0.35); res = {"type":"defender"}
-            state.bubbles.pop(i); return res
-    return {"error":"Bulle introuvable."}
-
-def buy_upgrade(state, uid):
-    up = next((u for u in get_all_upgrades() if u["id"] == uid), None)
-    if not up or state.cpu_cycles < up["cost"] or uid in state.purchased_upgrades: return {"ok":False}
-    state.cpu_cycles -= up["cost"]; state.purchased_upgrades.append(uid)
-    eff = up["effect_json"]
-    if "propagation_bonus" in eff: state.propagation_mod += eff["propagation_bonus"]
-    if "stealth" in eff: state.stealth_mod += eff["stealth"]
-    if "passive_income" in eff: state.passive_income_bonus += eff["passive_income"]
-    if "reveal_sectors" in eff: state.reveal_sectors = True
-    if "porosity_bonus" in eff: state.porosity_mod += eff["porosity_bonus"]
-    state.stealth_mod += up.get("stealth_mod", 0)
-    return {"ok":True, "remaining_cycles":round(state.cpu_cycles,1)}
->>>>>>> 9702cd4895f5d6325f061075273c3c8727dad33a

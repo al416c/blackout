@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from server.game_state import create_new_game, ZONES_CONFIG, ROUTER_INFECTION_CHANCE; s = create_new_game\\(1, 'worm'\\); print\\(f'OK: {len\\(s.nodes\\)} noeuds, {len\\(s.zones\\)} zones'\\); print\\([z.name + \\(' UNLOCK' if z.unlocked else ' LOCKED'\\) for z in s.zones]\\)\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
