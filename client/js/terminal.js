@@ -52,6 +52,10 @@ const Terminal = (() => {
         resizeHandleEl = document.getElementById('terminal-resize-handle');
         if (!outputEl || !inputEl || !panelEl) return;
 
+        if (suggestionsEl) {
+            suggestionsEl.classList.add('terminal-suggestions');
+        }
+
         setupResizeControls();
 
         inputEl.addEventListener('keydown', (e) => {
@@ -107,7 +111,13 @@ const Terminal = (() => {
         panelEl.addEventListener('click', () => inputEl.focus());
 
         WS.on('command_result', (data) => {
-            if (data.output) print(data.output, 'system');
+            let type = 'system';
+            if (data.output) {
+                if (data.output.includes('═══ MODULES')) type = 'shop';
+                else if (data.output.includes('BLACKOUT TERMINAL')) type = 'help';
+            }
+            
+            if (data.output) print(data.output, type);
             if (data.error) print(`Erreur: ${data.error}`, 'error');
         });
 
@@ -144,7 +154,7 @@ const Terminal = (() => {
         if (cmd === 'clear') {
             outputEl.innerHTML = '';
         } else if (cmd === 'modules' || cmd === 'shop') {
-            print(Upgrades.getAvailableModulesText(), 'system');
+            print(Upgrades.getAvailableModulesText(), 'shop');
         } else {
             WS.send('command', { line });
         }
