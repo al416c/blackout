@@ -453,7 +453,23 @@ const Game = (() => {
             const activeCount = Math.floor((pct / 100) * segments.length);
             segments.forEach((seg, idx) => {
                 seg.classList.toggle('active', idx < activeCount);
+                // Ajouter des couleurs d'urgence
+                if (pct >= 95) seg.style.borderColor = '#ff0000'; // Enragé
+                else if (pct >= 85) seg.style.borderColor = '#ff6600'; // Escalade
+                else if (pct >= 75) seg.style.borderColor = '#ffaa00'; // Alerte
+                else seg.style.borderColor = '';
             });
+        }
+        
+        // Afficher les seuils d'urgence
+        const urgencyEl = document.getElementById('suspicion-urgency');
+        if (urgencyEl) {
+            let urgencyText = '';
+            if (pct >= 95) urgencyText = '💥 ENRAGÉ — Défenses au MAXIMUM!';
+            else if (pct >= 85) urgencyText = '🚨 ESCALADE — Patch préliminaire activé!';
+            else if (pct >= 75) urgencyText = '⚠️  ALERTE — Vigilance accrue!';
+            urgencyEl.textContent = urgencyText;
+            urgencyEl.style.color = pct >= 95 ? '#ff0000' : (pct >= 85 ? '#ff6600' : (pct >= 75 ? '#ffaa00' : 'transparent'));
         }
     }
 

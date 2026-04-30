@@ -129,6 +129,11 @@ class GameState:
     patch_deployed: bool = False
     clean_rate: float = 0.0
 
+    # ── Urgence progressive ──
+    urgency_level_75_triggered: bool = False
+    urgency_level_85_triggered: bool = False
+    urgency_level_95_triggered: bool = False
+
     purchased_upgrades: list = field(default_factory=list)
 
     pending_qte: dict | None = None

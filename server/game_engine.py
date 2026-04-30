@@ -35,48 +35,9 @@ def _unlocked_candidates(state: GameState) -> list:
 
 
 def _build_qte_challenge(state: GameState, zone) -> dict:
-    mc = state.malware_class
-    commands = {
-        "worm": {
-            "LAN":  {"command": "worm deploy stealth_payload --zone lan", "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
-            "SRV":  {"command": "worm seed --target srv",             "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
-            "DB":   {"command": "worm inject --db --force",          "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
-            "SCADA": {"command": "worm swarm --scada --silent",     "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
-        },
-        "trojan": {
-            "LAN":  {"command": "trojan backdoor install --lan",      "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
-            "SRV":  {"command": "trojan deploy launcher --srv",       "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
-            "DB":   {"command": "trojan dump-db --target db",        "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
-            "SCADA": {"command": "trojan seed --scada",              "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
-        },
-        "ransomware": {
-            "LAN":  {"command": "ransomware encrypt --lan",          "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
-            "SRV":  {"command": "ransomware ransom --srv",           "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
-            "DB":   {"command": "ransomware lock --db",             "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
-            "SCADA": {"command": "ransomware blast --scada",        "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
-        },
-        "rootkit": {
-            "LAN":  {"command": "rootkit stealth --lan",             "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
-            "SRV":  {"command": "rootkit patch --srv",               "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
-            "DB":   {"command": "rootkit hide --db",                "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
-            "SCADA": {"command": "rootkit persist --scada",         "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
-        },
-    }
-    template = commands.get(mc, {}).get(zone.name)
-    if not template:
-        return None
+    """Crée un mini-jeu QTE amélioré avec défis supplémentaires (version avancée)."""
+    return _build_advanced_qte_challenge(state, zone)
 
-    return {
-        "zone_id": zone.id,
-        "zone_name": zone.name,
-        "expected_command": template["command"],
-        "prompt": (
-            f"QTE UNLOCK: Zone {zone.name} débloquée. Tapez exactement: {template['command']}"
-        ),
-        "bonus_text": template["bonus_text"],
-        "bonus_effect": template["bonus"],
-        "remaining_ticks": 8,
-    }
 
 
 def _grant_qte_bonus(state: GameState) -> str:
@@ -84,16 +45,162 @@ def _grant_qte_bonus(state: GameState) -> str:
     if not qte:
         return ""
     effect = qte["bonus_effect"]
+    multiplier = qte.get("bonus_multiplier", 1.0)  # Support pour bonus amélioré
+    
     if effect["type"] == "cpu":
-        state.cpu_cycles += effect["value"]
-        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
+        bonus_value = effect["value"] * multiplier
+        state.cpu_cycles += bonus_value
+        return f"✅ QTE réussi — bonus reçu: +{bonus_value:.0f} CPU Cycles"
     if effect["type"] == "propagation":
-        state.propagation_mod += effect["value"]
-        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
+        bonus_value = effect["value"] * multiplier
+        state.propagation_mod += bonus_value
+        return f"✅ QTE réussi — bonus reçu: +{bonus_value:.2f} propagation"
     if effect["type"] == "passive_income":
-        state.passive_income_bonus += effect["value"]
-        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
-    return "QTE réussi. Bonus appliqué."
+        bonus_value = effect["value"] * multiplier
+        state.passive_income_bonus += bonus_value
+        return f"✅ QTE réussi — bonus reçu: +{bonus_value:.1f} passive income"
+    return "✅ QTE réussi. Bonus appliqué."
+
+
+def _handle_urgency_levels(state: GameState) -> list:
+    """Gère les seuils d'urgence progressive (75%, 85%, 95%)."""
+    events = []
+    
+    # Seuil 75% — ALERTE (Blue Team devient vigilant)
+    if state.suspicion >= 75.0 and not state.urgency_level_75_triggered:
+        state.urgency_level_75_triggered = True
+        events.append({
+            "type": "urgency_alert",
+            "level": 75,
+            "message": "⚠️  ALERTE CRITIQUE — La méfiance atteint 75%. Le Blue Team lance une surveillance accrue.",
+            "effect": "blue_scan_frequency_increase",
+        })
+        # Le Blue Team scan plus souvent (s'ajoutera dans apply_blue_action)
+        state.ai_reactivity_boost = 1.5  # 50% boost
+
+    # Seuil 85% — CONTRE-MESURE (Premier patch préliminaire)
+    if state.suspicion >= 85.0 and not state.urgency_level_85_triggered:
+        state.urgency_level_85_triggered = True
+        events.append({
+            "type": "urgency_escalation",
+            "level": 85,
+            "message": "🚨 ESCALADE CRITIQUE — À 85% de méfiance, le Blue Team lance un patch préliminaire!",
+            "effect": "preliminary_patch_deploy",
+        })
+        # Commence le nettoyage léger (3% des infectés par tick)
+        if not hasattr(state, 'preliminary_clean_active'):
+            state.preliminary_clean_active = True
+            state.preliminary_clean_rate = 0.03
+
+    # Seuil 95% — IA ENRAGÉE (Aggression maximale)
+    if state.suspicion >= 95.0 and not state.urgency_level_95_triggered:
+        state.urgency_level_95_triggered = True
+        events.append({
+            "type": "urgency_enrage",
+            "level": 95,
+            "message": "💥 RAGE MAXIMALE — À 95%, le Blue Team devient agressif. Défenses renforcées +100%!",
+            "effect": "ai_enraged",
+        })
+        # L'IA scan et attaque beaucoup plus souvent
+        state.ai_reactivity_boost = 3.0  # 3x plus agressif
+        # Légère réduction de la propagation du malware
+        state.propagation_mod -= 0.15
+
+    return events
+
+
+def _build_advanced_qte_challenge(state: GameState, zone) -> dict:
+    """Crée un mini-jeu QTE amélioré avec défis supplémentaires."""
+    mc = state.malware_class
+    
+    # Défis contextuels basés sur la zone
+    challenges = {
+        "DMZ": {
+            "challenge_type": "firewall_bypass",
+            "prompt": "⚔️  FIREWALL BYPASS: Tapez le pattern pour contourner —> F1R3W4LL_BY9ASS",
+            "expected": "F1R3W4LL_BY9ASS",
+            "description": "Contourner le pare-feu DMZ",
+            "bonus_multiplier": 1.2,
+        },
+        "LAN": {
+            "challenge_type": "lateral_movement",
+            "prompt": "↳ MOUVEMENTS LATÉRAUX: Tapez pour infiltrer —> L4T3R4L_INJECT",
+            "expected": "L4T3R4L_INJECT",
+            "description": "Se déplacer latéralement dans le réseau LAN",
+            "bonus_multiplier": 1.15,
+        },
+        "SRV": {
+            "challenge_type": "privilege_escalation",
+            "prompt": "⬆️  ESCALADE PRIVILÈGES: Tapez pour élever —> PR1V_ESC4L4T3",
+            "expected": "PR1V_ESC4L4T3",
+            "description": "Escalader les privilèges serveur",
+            "bonus_multiplier": 1.3,
+        },
+        "DB": {
+            "challenge_type": "data_exfil",
+            "prompt": "📊 EXFILTRATION DATA: Tapez pour voler —> D4T4_EXF1L",
+            "expected": "D4T4_EXF1L",
+            "description": "Exfiltrer les données critiques",
+            "bonus_multiplier": 1.4,
+        },
+        "SCADA": {
+            "challenge_type": "critical_control",
+            "prompt": "⚡ CONTRÔLE CRITIQUE: Tapez pour dominer —> SC4D4_DOM1N4T3",
+            "expected": "SC4D4_DOM1N4T3",
+            "description": "Prendre le contrôle SCADA",
+            "bonus_multiplier": 1.5,
+        },
+    }
+    
+    challenge = challenges.get(zone.name, challenges["DMZ"])
+    
+    # Base QTE avec les templates existants (pour les bonus)
+    base_commands = {
+        "worm": {
+            "LAN":  {"bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+            "DMZ":  {"bonus": {"type": "cpu", "value": 20}, "bonus_text": "+20 CPU Cycles"},
+        },
+        "trojan": {
+            "LAN":  {"bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+            "DMZ":  {"bonus": {"type": "cpu", "value": 20}, "bonus_text": "+20 CPU Cycles"},
+        },
+        "ransomware": {
+            "LAN":  {"bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+            "DMZ":  {"bonus": {"type": "cpu", "value": 20}, "bonus_text": "+20 CPU Cycles"},
+        },
+        "rootkit": {
+            "LAN":  {"bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+            "DMZ":  {"bonus": {"type": "cpu", "value": 20}, "bonus_text": "+20 CPU Cycles"},
+        },
+    }
+    
+    base_bonus = base_commands.get(mc, {}).get(zone.name, {"bonus": {"type": "cpu", "value": 15}, "bonus_text": "+15 CPU Cycles"})
+    
+    return {
+        "zone_id": zone.id,
+        "zone_name": zone.name,
+        "expected_command": challenge["expected"],
+        "challenge_type": challenge["challenge_type"],
+        "prompt": challenge["prompt"],
+        "bonus_text": base_bonus["bonus_text"],
+        "bonus_effect": base_bonus["bonus"],
+        "bonus_multiplier": challenge["bonus_multiplier"],
+        "challenge_description": challenge["description"],
+        "remaining_ticks": 10,  # Plus de temps pour le mini-jeu
+        "is_advanced_qte": True,
+    }
 
 
 def process_tick(state: GameState) -> GameState:
@@ -239,6 +346,11 @@ def process_tick(state: GameState) -> GameState:
     # Budget Blue Team (régénération passive)
     # Moins agressive si la suspicion est basse (< 20%)
     ai_reactivity = 0.2 if state.suspicion < 20 else 0.5
+    
+    # ── Boost d'agressivité selon l'urgence ──
+    ai_reactivity_boost = getattr(state, 'ai_reactivity_boost', 1.0)
+    ai_reactivity *= ai_reactivity_boost
+    
     state.it_budget += state.healthy_count * ai_reactivity
 
     # Bruit et méfiance : Croissance exponentielle douce
@@ -254,6 +366,20 @@ def process_tick(state: GameState) -> GameState:
     passive_reduction  = getattr(state, 'passive_stealth_reduction', 0.05)
     
     state.suspicion    = max(0.0, min(100.0, state.suspicion + suspicion_increase - passive_reduction))
+
+    # ── URGENCE PROGRESSIVE ──
+    urgency_events = _handle_urgency_levels(state)
+    for evt in urgency_events:
+        state.pending_terminal_events.append(evt)
+
+    # Gestion du nettoyage préliminaire (85% urgence)
+    if getattr(state, 'preliminary_clean_active', False):
+        infected_list = [n for n in state.nodes if n.infected and not n.quarantined]
+        if infected_list:
+            m_to_clean = max(1, round(len(infected_list) * state.preliminary_clean_rate))
+            to_clean = random.sample(infected_list, min(m_to_clean, len(infected_list)))
+            for node in to_clean:
+                node.infected = False
 
     # Événements Blue Team automatiques : Seuils respectés
     blue_events = get_blueteam_events()
@@ -439,6 +565,18 @@ def execute_command(state: GameState, line: str) -> dict:
         message = _grant_qte_bonus(state)
         state.pending_qte = None
         return {"ok": True, "output": message}
+
+    # Pénalité : QTE échouée (joueur a saisi une autre commande au lieu du QTE)
+    if state.pending_qte and state.tick > getattr(state.pending_qte, 'qte_start_tick', 0):
+        # C'est une autre commande pendant qu'un QTE est actif → fail du QTE
+        qte_zone = state.pending_qte.get('zone_name', 'Unknown')
+        state.pending_qte = None
+        # Pénalité de détection
+        state.suspicion = min(100.0, state.suspicion + 20.0)
+        return {
+            "ok": False, 
+            "output": f"❌ QTE ÉCHOUÉE pour la zone {qte_zone}. Suspicion +20% due à la mauvaise manœuvre!"
+        }
 
     # Cheat code (debug)
     if raw == "-niter cheagger":
