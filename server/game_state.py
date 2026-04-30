@@ -66,6 +66,7 @@ class Zone:
     node_ids: list
     router_id: Optional[int]
     unlocked: bool
+    qte_triggered: bool = False
 
     def to_dict(self):
         return asdict(self)
@@ -130,6 +131,9 @@ class GameState:
 
     purchased_upgrades: list = field(default_factory=list)
 
+    pending_qte: dict | None = None
+    pending_terminal_events: list = field(default_factory=list)
+
     propagation_mod: float = 0.0
     stealth_mod: float = 0.0
     income_mod: float = 0.0
@@ -185,6 +189,12 @@ class GameState:
             "suspicion": round(self.suspicion, 2),
             "patch_deployed": self.patch_deployed,
             "purchased_upgrades": self.purchased_upgrades,
+            "current_qte": {
+                "zone_name": self.pending_qte["zone_name"],
+                "prompt": self.pending_qte["prompt"],
+                "remaining_ticks": self.pending_qte.get("remaining_ticks", 0),
+                "bonus_text": self.pending_qte["bonus_text"],
+            } if self.pending_qte else None,
             "bubbles": [b.to_dict() for b in self.bubbles],
             "result": self.result,
             "score": self.score,

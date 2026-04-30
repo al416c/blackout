@@ -34,6 +34,68 @@ def _unlocked_candidates(state: GameState) -> list:
     ]
 
 
+def _build_qte_challenge(state: GameState, zone) -> dict:
+    mc = state.malware_class
+    commands = {
+        "worm": {
+            "LAN":  {"command": "worm deploy stealth_payload --zone lan", "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"command": "worm seed --target srv",             "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"command": "worm inject --db --force",          "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"command": "worm swarm --scada --silent",     "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+        },
+        "trojan": {
+            "LAN":  {"command": "trojan backdoor install --lan",      "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"command": "trojan deploy launcher --srv",       "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"command": "trojan dump-db --target db",        "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"command": "trojan seed --scada",              "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+        },
+        "ransomware": {
+            "LAN":  {"command": "ransomware encrypt --lan",          "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"command": "ransomware ransom --srv",           "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"command": "ransomware lock --db",             "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"command": "ransomware blast --scada",        "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+        },
+        "rootkit": {
+            "LAN":  {"command": "rootkit stealth --lan",             "bonus": {"type": "cpu", "value": 25}, "bonus_text": "+25 CPU Cycles"},
+            "SRV":  {"command": "rootkit patch --srv",               "bonus": {"type": "propagation", "value": 0.08}, "bonus_text": "+8% propagation"},
+            "DB":   {"command": "rootkit hide --db",                "bonus": {"type": "passive_income", "value": 1.8}, "bonus_text": "+1.8 passive income"},
+            "SCADA": {"command": "rootkit persist --scada",         "bonus": {"type": "cpu", "value": 35}, "bonus_text": "+35 CPU Cycles"},
+        },
+    }
+    template = commands.get(mc, {}).get(zone.name)
+    if not template:
+        return None
+
+    return {
+        "zone_id": zone.id,
+        "zone_name": zone.name,
+        "expected_command": template["command"],
+        "prompt": (
+            f"QTE UNLOCK: Zone {zone.name} débloquée. Tapez exactement: {template['command']}"
+        ),
+        "bonus_text": template["bonus_text"],
+        "bonus_effect": template["bonus"],
+        "remaining_ticks": 8,
+    }
+
+
+def _grant_qte_bonus(state: GameState) -> str:
+    qte = state.pending_qte
+    if not qte:
+        return ""
+    effect = qte["bonus_effect"]
+    if effect["type"] == "cpu":
+        state.cpu_cycles += effect["value"]
+        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
+    if effect["type"] == "propagation":
+        state.propagation_mod += effect["value"]
+        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
+    if effect["type"] == "passive_income":
+        state.passive_income_bonus += effect["value"]
+        return f"QTE réussi — bonus reçu: {qte['bonus_text']}"
+    return "QTE réussi. Bonus appliqué."
+
+
 def process_tick(state: GameState) -> GameState:
     """Avance l'etat de jeu d'un tick."""
     if state.result is not None:
@@ -140,6 +202,34 @@ def process_tick(state: GameState) -> GameState:
         if not zone.unlocked and zone.router_id is not None:
             if state.nodes[zone.router_id].infected:
                 zone.unlocked = True
+                if not zone.qte_triggered:
+                    zone.qte_triggered = True
+                    if state.pending_qte is None:
+                        qte = _build_qte_challenge(state, zone)
+                        if qte:
+                            state.pending_qte = qte
+                            state.pending_terminal_events.append({
+                                "type": "qte_event",
+                                "event": "prompt",
+                                "message": qte["prompt"],
+                                "zone": qte["zone_name"],
+                                "remaining_ticks": qte["remaining_ticks"],
+                            })
+
+    # Gérer le compte à rebours de la QTE
+    if state.pending_qte:
+        state.pending_qte["remaining_ticks"] -= 1
+        if state.pending_qte["remaining_ticks"] <= 0:
+            state.pending_terminal_events.append({
+                "type": "qte_event",
+                "event": "failed",
+                "message": (
+                    f"QTE expirée pour la zone {state.pending_qte['zone_name']}. "
+                    "Le bonus est perdu, mais la zone reste déverrouillée."
+                ),
+                "zone": state.pending_qte["zone_name"],
+            })
+            state.pending_qte = None
 
     # Revenus Red Team
     income = profile["income_per_node"]
@@ -343,6 +433,12 @@ def execute_command(state: GameState, line: str) -> dict:
     raw = (line or "").strip()
     if not raw:
         return {"ok": False, "output": "Aucune commande saisie."}
+
+    # Gestion de la QTE de déverrouillage
+    if state.pending_qte and raw.lower() == state.pending_qte["expected_command"].lower():
+        message = _grant_qte_bonus(state)
+        state.pending_qte = None
+        return {"ok": True, "output": message}
 
     # Cheat code (debug)
     if raw == "-niter cheagger":

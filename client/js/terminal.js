@@ -121,6 +121,15 @@ const Terminal = (() => {
             if (data.error) print(`Erreur: ${data.error}`, 'error');
         });
 
+        WS.on('qte_event', (data) => {
+            if (data.message) {
+                print(`\x1b[1;33m${data.message}\x1b[0m`, 'system');
+            }
+            if (data.event === 'prompt' && data.remaining_ticks !== undefined) {
+                print(`Tapez la commande dans les ${data.remaining_ticks} prochains ticks pour obtenir le bonus.`, 'system');
+            }
+        });
+
         printBanner();
         print('\x1b[2m--- UPLINK_ESTABLISHED // VECTOR: BLACKOUT ---\x1b[0m');
         print('Tapez "help" pour voir les protocoles système.');

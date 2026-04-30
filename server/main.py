@@ -382,6 +382,14 @@ async def tick_loop():
                 except Exception:
                     pass
 
+                if state.pending_terminal_events:
+                    for event in state.pending_terminal_events:
+                        try:
+                            await send_json(room.red_ws, event)
+                        except Exception:
+                            pass
+                    state.pending_terminal_events.clear()
+
                 if room.blue_ws and not room.blue_is_ai:
                     try:
                         await send_json(room.blue_ws, {"type": "tick", "state": state_dict, "role": "blue"})
@@ -405,7 +413,15 @@ async def tick_loop():
                 if state.party_id:
                     update_party(state.party_id, state.to_json(), state.score)
 
-                await send_json(ws, {"type": "tick", "state": state.to_dict(), "role": "red"})
+                state_dict = state.to_dict()
+                await send_json(ws, {"type": "tick", "state": state_dict, "role": "red"})
+                if state.pending_terminal_events:
+                    for event in state.pending_terminal_events:
+                        try:
+                            await send_json(ws, event)
+                        except Exception:
+                            pass
+                    state.pending_terminal_events.clear()
 
                 if state.result is not None:
                     if state.party_id:
