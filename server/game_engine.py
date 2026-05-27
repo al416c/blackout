@@ -198,7 +198,7 @@ def _build_advanced_qte_challenge(state: GameState, zone) -> dict:
         "bonus_effect": base_bonus["bonus"],
         "bonus_multiplier": challenge["bonus_multiplier"],
         "challenge_description": challenge["description"],
-        "remaining_ticks": 10,  # Plus de temps pour le mini-jeu
+        "remaining_ticks": 11,  # 22 secondes pour le mini-jeu (11 ticks × 2 sec)
         "is_advanced_qte": True,
     }
 
